@@ -203,7 +203,7 @@
     loadMyTrips();
   } else {
     document.getElementById('senderView').style.display = 'block';
-    loadAllTrips();
+    // loadAllTrips called after it's defined below
   }
 
   window.loadAllTrips = async function(from='', to='') {
@@ -249,6 +249,11 @@
     const to   = document.getElementById('searchTo').value.trim();
     window.loadAllTrips(from, to);
   };
+
+  // Initial load for sender
+  if (user.role === 'sender') {
+    window.loadAllTrips();
+  }
 
   async function loadMyTrips() {
     try {
