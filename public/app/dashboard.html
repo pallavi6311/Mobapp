@@ -8,159 +8,275 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"/>
   <link rel="stylesheet" href="styles/app.css"/>
+  <style>
+    /* Traveller theme — Blue */
+    .traveller-header {
+      background: linear-gradient(135deg, #074061 0%, #0d6898 100%);
+      color: #fff; padding: 2rem 1.5rem; margin: -0px 0 2rem 0;
+    }
+    /* Sender theme — Green */
+    .sender-header {
+      background: linear-gradient(135deg, #1b5e20 0%, #2a9134 100%);
+      color: #fff; padding: 2rem 1.5rem; margin: 0 0 2rem 0;
+    }
+    .role-header-title { font-size: 1.6rem; font-weight: 800; margin-bottom: .25rem; }
+    .role-header-sub   { opacity: .85; font-size: .95rem; }
+    .role-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(255,255,255,.2); border-radius: 20px;
+      padding: 4px 14px; font-size: .8rem; font-weight: 700;
+      margin-bottom: .75rem;
+    }
+
+    /* Stats */
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+      gap: 1rem; margin-bottom: 1.75rem;
+    }
+    .stat-card {
+      background: #fff; border-radius: 12px; padding: 1.1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08); border: 1px solid var(--gray-200);
+      display: flex; flex-direction: column; gap: .4rem;
+    }
+    .stat-icon { font-size: 1.6rem; margin-bottom: .2rem; }
+    .stat-num  { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+    .stat-label { font-size: .8rem; color: var(--gray-400); font-weight: 600; }
+
+    /* Action buttons */
+    .action-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+      gap: .75rem; margin-bottom: 1.75rem;
+    }
+    .action-btn {
+      background: #fff; border: 2px solid var(--gray-200); border-radius: 12px;
+      padding: 1.1rem; text-align: center; cursor: pointer; transition: .2s;
+      text-decoration: none; color: var(--gray-900); display: flex;
+      flex-direction: column; align-items: center; gap: .5rem;
+    }
+    .action-btn:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(0,0,0,.1); transform: translateY(-2px); }
+    .action-btn .action-icon { font-size: 2rem; }
+    .action-btn .action-label { font-size: .85rem; font-weight: 700; color: var(--primary); }
+    .action-btn .action-desc  { font-size: .75rem; color: var(--gray-400); }
+
+    .action-btn.primary-action {
+      background: var(--primary); border-color: var(--primary); color: #fff;
+    }
+    .action-btn.primary-action .action-label { color: #fff; }
+    .action-btn.primary-action .action-desc  { color: rgba(255,255,255,.7); }
+
+    .action-btn.green-action {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .action-btn.green-action .action-label { color: #fff; }
+    .action-btn.green-action .action-desc  { color: rgba(255,255,255,.7); }
+
+    /* Recent section */
+    .recent-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+    }
+    @media(max-width:700px){ .recent-grid{ grid-template-columns:1fr; } }
+
+    .wallet-banner {
+      border-radius: 14px; padding: 1.25rem 1.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.75rem;
+    }
+    .traveller-wallet { background: linear-gradient(135deg, #074061, #0d6898); color: #fff; }
+    .sender-wallet    { background: linear-gradient(135deg, #1b5e20, #2a9134); color: #fff; }
+  </style>
 </head>
 <body>
 
 <!-- Navbar -->
-<nav class="navbar">
+<nav class="navbar" id="mainNav">
   <div class="navbar-brand">
-    <img src="img/my-logo-cropped.svg" alt="PeerDrop"/>
-    PeerDrop
+    <img src="img/my-logo-cropped.svg" alt="PeerDrop"/> PeerDrop
   </div>
   <div class="navbar-menu">
     <a href="dashboard.html" class="active hide-mobile">Dashboard</a>
-    <a href="trips.html" class="hide-mobile">Trips</a>
+    <a href="trips.html" class="hide-mobile" id="navTrips">Trips</a>
     <a href="shipments.html" class="hide-mobile">Shipments</a>
-    <a href="wallet.html" class="hide-mobile">Wallet</a>
-    <div id="userBadge" style="display:flex;align-items:center;gap:.5rem">
-      <div class="navbar-avatar" id="avatarInitial">U</div>
-      <span class="navbar-role-badge" id="roleBadge"></span>
-    </div>
+    <a href="wallet.html" class="hide-mobile" id="navWallet">Wallet</a>
+    <div class="navbar-avatar" id="avatarInitial">U</div>
     <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </div>
 </nav>
 
-<div class="page-wrap">
-  <!-- Welcome -->
-  <div style="margin-bottom:1.5rem">
-    <h2 id="welcomeMsg">Welcome back 👋</h2>
-    <p class="text-muted" id="welcomeSub"></p>
+<!-- TRAVELLER DASHBOARD -->
+<div id="travellerDashboard" style="display:none">
+  <div class="traveller-header">
+    <div class="role-tag">✈️ Traveller Account</div>
+    <div class="role-header-title" id="tWelcome">Welcome back!</div>
+    <div class="role-header-sub">Post trips and earn money by carrying parcels</div>
   </div>
 
-  <!-- Stats row -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.75rem">
-    <div class="card" style="display:flex;align-items:center;gap:1rem">
-      <div style="width:48px;height:48px;border-radius:12px;background:#e8f4fd;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
-        <span class="material-symbols-outlined" style="color:var(--primary)">flight_takeoff</span>
-      </div>
+  <div class="page-wrap" style="padding-top:0">
+    <!-- Wallet banner -->
+    <div class="wallet-banner traveller-wallet">
       <div>
-        <div class="fw-bold" style="font-size:1.5rem" id="statTrips">—</div>
-        <div class="text-muted text-sm" id="statTripsLabel">My Trips</div>
+        <div style="font-size:.85rem;opacity:.8;margin-bottom:4px">💰 Wallet Balance</div>
+        <div style="font-size:2rem;font-weight:800" id="tWalletBal">—</div>
+        <div style="font-size:.8rem;opacity:.7">Available to withdraw</div>
       </div>
+      <a href="wallet.html" class="btn" style="background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.4)">
+        Withdraw →
+      </a>
     </div>
-    <div class="card" style="display:flex;align-items:center;gap:1rem">
-      <div style="width:48px;height:48px;border-radius:12px;background:#e6f4ea;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
-        <span class="material-symbols-outlined" style="color:var(--accent)">inventory_2</span>
-      </div>
-      <div>
-        <div class="fw-bold" style="font-size:1.5rem" id="statShipments">—</div>
-        <div class="text-muted text-sm">My Shipments</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:center;gap:1rem">
-      <div style="width:48px;height:48px;border-radius:12px;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
-        <span class="material-symbols-outlined" style="color:var(--warn)">pending_actions</span>
-      </div>
-      <div>
-        <div class="fw-bold" style="font-size:1.5rem" id="statPending">—</div>
-        <div class="text-muted text-sm">Pending</div>
-      </div>
-    </div>
-    <div class="wallet-card" style="display:flex;flex-direction:column;justify-content:center">
-      <div class="wallet-label">Wallet Balance</div>
-      <div class="wallet-amount" id="walletBal">—</div>
-      <div class="wallet-subtext">Available to withdraw</div>
-    </div>
-  </div>
 
-  <!-- Traveller quick actions -->
-  <div id="travellerActions" style="display:none;margin-bottom:1.75rem">
-    <h3 class="section-title">Quick Actions</h3>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-      <button class="btn btn-primary" onclick="openPostTripModal()">
-        <span class="material-symbols-outlined">add_circle</span> Post a New Trip
-      </button>
-      <a href="trips.html" class="btn btn-outline">
-        <span class="material-symbols-outlined">route</span> View My Trips
-      </a>
-      <a href="shipments.html" class="btn btn-ghost">
-        <span class="material-symbols-outlined">inbox</span> Incoming Requests
-      </a>
-      <a href="wallet.html" class="btn btn-ghost">
-        <span class="material-symbols-outlined">account_balance_wallet</span> My Wallet
-      </a>
-    </div>
-  </div>
-
-  <!-- Sender quick actions -->
-  <div id="senderActions" style="display:none;margin-bottom:1.75rem">
-    <h3 class="section-title">Quick Actions</h3>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-      <a href="trips.html" class="btn btn-primary">
-        <span class="material-symbols-outlined">search</span> Find a Traveller
-      </a>
-      <a href="shipments.html" class="btn btn-outline">
-        <span class="material-symbols-outlined">local_shipping</span> My Shipments
-      </a>
-    </div>
-  </div>
-
-  <!-- Recent activity -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
-    <div class="card">
-      <div class="card-header"><div class="card-title" id="recentColTitle">Recent Trips</div></div>
-      <div id="recentTrips">
-        <div class="loader"><div class="spinner"></div></div>
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">🗺️</div>
+        <div class="stat-num" id="tStatTrips">—</div>
+        <div class="stat-label">Trips Posted</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-num" id="tStatShipments">—</div>
+        <div class="stat-label">Total Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-num" id="tStatPending">—</div>
+        <div class="stat-label">Pending Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-num" id="tStatCompleted">—</div>
+        <div class="stat-label">Completed</div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Recent Shipments</div></div>
-      <div id="recentShipments">
-        <div class="loader"><div class="spinner"></div></div>
+
+    <!-- Actions -->
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:.75rem;color:var(--gray-700)">Quick Actions</h3>
+    <div class="action-grid" style="margin-bottom:1.75rem">
+      <a class="action-btn primary-action" onclick="openPostTripModal()">
+        <div class="action-icon">✈️</div>
+        <div class="action-label">Post a Trip</div>
+        <div class="action-desc">Add your travel details</div>
+      </a>
+      <a href="shipments.html" class="action-btn">
+        <div class="action-icon">📬</div>
+        <div class="action-label">Incoming Requests</div>
+        <div class="action-desc">Accept or reject parcels</div>
+      </a>
+      <a href="trips.html" class="action-btn">
+        <div class="action-icon">🗺️</div>
+        <div class="action-label">My Trips</div>
+        <div class="action-desc">View all posted trips</div>
+      </a>
+      <a href="wallet.html" class="action-btn">
+        <div class="action-icon">💰</div>
+        <div class="action-label">My Wallet</div>
+        <div class="action-desc">Withdraw earnings</div>
+      </a>
+    </div>
+
+    <!-- Recent -->
+    <div class="recent-grid">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Trips</div></div>
+        <div id="tRecentTrips"><div class="loader"><div class="spinner"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Incoming Requests</div></div>
+        <div id="tRecentShipments"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Post Trip Modal (Traveller only) -->
+<!-- SENDER DASHBOARD -->
+<div id="senderDashboard" style="display:none">
+  <div class="sender-header">
+    <div class="role-tag">📦 Sender Account</div>
+    <div class="role-header-title" id="sWelcome">Welcome back!</div>
+    <div class="role-header-sub">Find travellers and ship your parcels cheaply</div>
+  </div>
+
+  <div class="page-wrap" style="padding-top:0">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <div class="stat-num" id="sStatShipments">—</div>
+        <div class="stat-label">My Shipments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-num" id="sStatPending">—</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🚚</div>
+        <div class="stat-num" id="sStatActive">—</div>
+        <div class="stat-label">In Transit</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-num" id="sStatCompleted">—</div>
+        <div class="stat-label">Delivered</div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <h3 style="font-size:1rem;font-weight:700;margin-bottom:.75rem;color:var(--gray-700)">Quick Actions</h3>
+    <div class="action-grid" style="margin-bottom:1.75rem">
+      <a href="trips.html" class="action-btn green-action">
+        <div class="action-icon">🔍</div>
+        <div class="action-label">Find a Traveller</div>
+        <div class="action-desc">Search by city</div>
+      </a>
+      <a href="shipments.html" class="action-btn">
+        <div class="action-icon">📋</div>
+        <div class="action-label">My Shipments</div>
+        <div class="action-desc">Track your parcels</div>
+      </a>
+      <a href="shipments.html" class="action-btn">
+        <div class="action-icon">💳</div>
+        <div class="action-label">Make Payment</div>
+        <div class="action-desc">Pay for accepted requests</div>
+      </a>
+      <a href="shipments.html" class="action-btn">
+        <div class="action-icon">🏠</div>
+        <div class="action-label">Confirm Delivery</div>
+        <div class="action-desc">Release payment to traveller</div>
+      </a>
+    </div>
+
+    <!-- Recent shipments -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">My Recent Shipments</div></div>
+      <div id="sRecentShipments"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- Available trips -->
+    <div class="card" style="margin-top:1.25rem">
+      <div class="card-header">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-title">Available Travellers</div>
+          <a href="trips.html" style="font-size:.8rem;color:var(--primary);font-weight:700">View All →</a>
+        </div>
+      </div>
+      <div id="sAvailableTrips"><div class="loader"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Post Trip Modal -->
 <div class="modal-overlay" id="postTripModal">
   <div class="modal-box">
     <button class="modal-close" onclick="closeModal('postTripModal')">&times;</button>
-    <div class="modal-title">
-      <span class="material-symbols-outlined" style="vertical-align:middle">flight_takeoff</span>
-      Post a New Trip
-    </div>
-    <form id="postTripForm" novalidate>
-      <div style="display:flex;flex-direction:column;gap:.9rem">
+    <div class="modal-title">✈️ Post a New Trip</div>
+    <form id="postTripForm">
+      <div style="display:flex;flex-direction:column;gap:.85rem">
         <div class="form-row">
-          <div class="form-group">
-            <label>From (City)</label>
-            <input type="text" id="tripFrom" placeholder="e.g. Mumbai" required/>
-          </div>
-          <div class="form-group">
-            <label>To (City)</label>
-            <input type="text" id="tripTo" placeholder="e.g. Delhi" required/>
-          </div>
+          <div class="form-group"><label>From</label><input type="text" id="tripFrom" placeholder="Chennai" required/></div>
+          <div class="form-group"><label>To</label><input type="text" id="tripTo" placeholder="Mumbai" required/></div>
         </div>
         <div class="form-row">
-          <div class="form-group">
-            <label>Departure Date</label>
-            <input type="date" id="tripDepDate" required/>
-          </div>
-          <div class="form-group">
-            <label>Departure Time</label>
-            <input type="time" id="tripDepTime"/>
-          </div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Arrival Date</label>
-            <input type="date" id="tripArrDate"/>
-          </div>
-          <div class="form-group">
-            <label>Arrival Time</label>
-            <input type="time" id="tripArrTime"/>
-          </div>
+          <div class="form-group"><label>Departure Date</label><input type="date" id="tripDepDate" required/></div>
+          <div class="form-group"><label>Departure Time</label><input type="time" id="tripDepTime"/></div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -173,20 +289,11 @@
               <option value="bike">🏍️ Bike</option>
             </select>
           </div>
-          <div class="form-group">
-            <label>Price per Kg (₹)</label>
-            <input type="number" id="tripPrice" placeholder="50" min="1" required/>
-          </div>
+          <div class="form-group"><label>Price per Kg (₹)</label><input type="number" id="tripPrice" placeholder="50" min="1" required/></div>
         </div>
-        <div class="form-group">
-          <label>Available Weight Capacity (Kg)</label>
-          <input type="number" id="tripWeight" placeholder="5" min="0"/>
-        </div>
+        <div class="form-group"><label>Available Weight (Kg)</label><input type="number" id="tripWeight" placeholder="5"/></div>
         <div id="postTripError" class="error-msg" style="display:none"></div>
-        <button type="submit" class="btn btn-primary btn-block" id="postTripBtn">
-          <span class="material-symbols-outlined" style="font-size:1rem">publish</span>
-          Post Trip
-        </button>
+        <button type="submit" class="btn btn-primary btn-block" id="postTripBtn">Post Trip</button>
       </div>
     </form>
   </div>
@@ -195,9 +302,9 @@
 <div id="toast-container"></div>
 
 <script>
-  function openPostTripModal()  { document.getElementById('postTripModal').classList.add('open'); }
-  function closeModal(id)       { document.getElementById(id).classList.remove('open'); }
-  function logout()             { localStorage.clear(); window.location.href = 'login.html'; }
+  function openPostTripModal() { document.getElementById('postTripModal').classList.add('open'); }
+  function closeModal(id)      { document.getElementById(id).classList.remove('open'); }
+  function logout()            { localStorage.clear(); window.location.href = 'login.html'; }
 </script>
 
 <script type="module">
@@ -206,93 +313,101 @@
   const user = getUser();
   if (!user || !getToken()) { window.location.href = 'login.html'; }
 
-  // Navbar
+  // Set avatar
   document.getElementById('avatarInitial').textContent = (user.fullName || 'U')[0].toUpperCase();
-  document.getElementById('roleBadge').textContent = user.role === 'traveller' ? '✈️ Traveller' : '📦 Sender';
-  document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.fullName?.split(' ')[0]} 👋`;
-  document.getElementById('welcomeSub').textContent = user.role === 'traveller'
-    ? 'Post trips and earn by carrying parcels'
-    : 'Find travellers to ship your parcels cheaply';
 
-  // Show role-based actions
-  document.getElementById(user.role === 'traveller' ? 'travellerActions' : 'senderActions').style.display = 'block';
-  if (user.role === 'sender') document.getElementById('recentColTitle').textContent = 'Available Trips';
-  if (user.role === 'traveller') document.getElementById('statTripsLabel').textContent = 'My Trips';
+  // Show role-specific dashboard
+  if (user.role === 'traveller') {
+    document.getElementById('travellerDashboard').style.display = 'block';
+    document.getElementById('mainNav').style.background = 'var(--primary)';
+    document.getElementById('tWelcome').textContent = `Welcome back, ${user.fullName?.split(' ')[0]}! ✈️`;
+    loadTravellerData();
+  } else {
+    document.getElementById('senderDashboard').style.display = 'block';
+    document.getElementById('mainNav').style.background = '#1b5e20';
+    document.getElementById('sWelcome').textContent = `Welcome back, ${user.fullName?.split(' ')[0]}! 📦`;
+    loadSenderData();
+  }
 
-  // Load data
-  async function loadDashboard() {
+  async function loadTravellerData() {
     try {
-      const [shipments, wallet] = await Promise.all([api.getMyShipments(), api.getWallet()]);
+      const [trips, shipments, wallet] = await Promise.all([
+        api.getMyTrips(), api.getMyShipments(), api.getWallet()
+      ]);
 
-      document.getElementById('statShipments').textContent = shipments.length;
-      document.getElementById('statPending').textContent = shipments.filter(s => s.status === 'pending').length;
-      document.getElementById('walletBal').textContent = wallet.walletBalanceFormatted;
-
-      // Recent shipments
-      const sEl = document.getElementById('recentShipments');
-      if (!shipments.length) {
-        sEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No shipments yet</p></div>';
-      } else {
-        sEl.innerHTML = shipments.slice(0, 4).map(s => `
-          <div class="shipment-item" onclick="location.href='shipments.html'">
-            <div class="shipment-header">
-              <span class="shipment-route">${s.from} → ${s.to}</span>
-              <span class="badge badge-${s.status}">${s.status}</span>
-            </div>
-            <div class="text-muted text-sm">${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
-          </div>`).join('');
-      }
+      document.getElementById('tWalletBal').textContent = wallet.walletBalanceFormatted;
+      document.getElementById('tStatTrips').textContent = trips.length;
+      document.getElementById('tStatShipments').textContent = shipments.length;
+      document.getElementById('tStatPending').textContent = shipments.filter(s => s.status === 'pending').length;
+      document.getElementById('tStatCompleted').textContent = shipments.filter(s => s.status === 'completed').length;
 
       // Recent trips
-      if (user.role === 'traveller') {
-        const trips = await api.getMyTrips();
-        document.getElementById('statTrips').textContent = trips.length;
-        const tEl = document.getElementById('recentTrips');
-        if (!trips.length) {
-          tEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>No trips posted yet</p></div>';
-        } else {
-          tEl.innerHTML = trips.slice(0, 4).map(t => `
-            <div class="shipment-item" onclick="location.href='trips.html'">
-              <div class="shipment-header">
-                <span class="shipment-route">${t.from} → ${t.to}</span>
-                <span class="badge badge-${t.status}">${t.status}</span>
-              </div>
-              <div class="text-muted text-sm">${t.meansOfTravel} · ₹${t.pricePerKg}/kg · ${timeAgo(t.createdAt)}</div>
-            </div>`).join('');
-        }
-      } else {
-        const trips = await api.getTrips();
-        document.getElementById('statTrips').textContent = trips.length;
-        const tEl = document.getElementById('recentTrips');
-        if (!trips.length) {
-          tEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>No trips available</p></div>';
-        } else {
-          tEl.innerHTML = trips.slice(0, 4).map(t => `
-            <div class="trip-card" onclick="location.href='trips.html'">
-              <div class="trip-route">
-                <span class="city">${t.from}</span>
-                <span class="arrow">→</span>
-                <span class="city">${t.to}</span>
-              </div>
-              <div class="trip-meta">
-                <span>📅 ${t.departureDate}</span>
-                <span>${travelIcon(t.meansOfTravel)} ${t.meansOfTravel}</span>
-              </div>
-              <div class="trip-price">₹${t.pricePerKg}/kg</div>
-            </div>`).join('');
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
+      const tEl = document.getElementById('tRecentTrips');
+      tEl.innerHTML = trips.length ? trips.slice(0,3).map(t => `
+        <div class="shipment-item">
+          <div class="shipment-header">
+            <span class="shipment-route">${t.from} → ${t.to}</span>
+            <span class="badge badge-${t.status}">${t.status}</span>
+          </div>
+          <div class="text-muted text-sm">${t.meansOfTravel} · ₹${t.pricePerKg}/kg · ${timeAgo(t.createdAt)}</div>
+        </div>`).join('') :
+        '<div class="empty-state"><div class="empty-icon">🗺️</div><p>No trips yet. Post your first trip!</p></div>';
+
+      // Recent shipments/requests
+      const sEl = document.getElementById('tRecentShipments');
+      sEl.innerHTML = shipments.length ? shipments.slice(0,3).map(s => `
+        <div class="shipment-item">
+          <div class="shipment-header">
+            <span class="shipment-route">${s.from} → ${s.to}</span>
+            <span class="badge badge-${s.status}">${s.status}</span>
+          </div>
+          <div class="text-muted text-sm">📦 ${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
+        </div>`).join('') :
+        '<div class="empty-state"><div class="empty-icon">📬</div><p>No requests yet</p></div>';
+
+    } catch(err) { console.error(err); }
   }
 
-  function travelIcon(m) {
-    const icons = { flight: '✈️', train: '🚆', bus: '🚌', car: '🚗', bike: '🏍️' };
-    return icons[m] || '🚀';
-  }
+  async function loadSenderData() {
+    try {
+      const [shipments, trips] = await Promise.all([
+        api.getMyShipments(), api.getTrips()
+      ]);
 
-  loadDashboard();
+      document.getElementById('sStatShipments').textContent = shipments.length;
+      document.getElementById('sStatPending').textContent = shipments.filter(s => s.status === 'pending').length;
+      document.getElementById('sStatActive').textContent = shipments.filter(s => ['accepted','picked_up'].includes(s.status)).length;
+      document.getElementById('sStatCompleted').textContent = shipments.filter(s => s.status === 'completed').length;
+
+      // Recent shipments
+      const sEl = document.getElementById('sRecentShipments');
+      sEl.innerHTML = shipments.length ? shipments.slice(0,4).map(s => `
+        <div class="shipment-item">
+          <div class="shipment-header">
+            <span class="shipment-route">${s.from} → ${s.to}</span>
+            <div>
+              <span class="badge badge-${s.status}">${s.status.replace('_',' ')}</span>
+              <span class="badge badge-${s.paymentStatus}" style="margin-left:4px">${s.paymentStatus}</span>
+            </div>
+          </div>
+          <div class="text-muted text-sm">📦 ${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
+        </div>`).join('') :
+        '<div class="empty-state"><div class="empty-icon">📭</div><p>No shipments yet. Find a traveller to get started!</p></div>';
+
+      // Available trips
+      const tEl = document.getElementById('sAvailableTrips');
+      tEl.innerHTML = trips.length ? trips.slice(0,3).map(t => `
+        <div class="shipment-item" style="cursor:pointer" onclick="location.href='trips.html'">
+          <div class="shipment-header">
+            <span class="shipment-route">${t.from} → ${t.to}</span>
+            <span style="font-weight:700;color:var(--accent)">₹${t.pricePerKg}/kg</span>
+          </div>
+          <div class="text-muted text-sm">📅 ${t.departureDate} · ${t.meansOfTravel} · by ${t.travellerName}</div>
+        </div>`).join('') :
+        '<div class="empty-state"><div class="empty-icon">🔍</div><p>No travellers available right now</p></div>';
+
+    } catch(err) { console.error(err); }
+  }
 
   // Post Trip form
   document.getElementById('postTripForm').addEventListener('submit', async (e) => {
@@ -301,36 +416,30 @@
     const btn    = document.getElementById('postTripBtn');
     errDiv.style.display = 'none';
     btn.disabled = true; btn.textContent = 'Posting…';
-
     try {
       await api.postTrip({
-        from:           document.getElementById('tripFrom').value.trim(),
-        to:             document.getElementById('tripTo').value.trim(),
+        from: document.getElementById('tripFrom').value.trim(),
+        to:   document.getElementById('tripTo').value.trim(),
         departureDate:  document.getElementById('tripDepDate').value,
         departureTime:  document.getElementById('tripDepTime').value,
-        arrivalDate:    document.getElementById('tripArrDate').value,
-        arrivalTime:    document.getElementById('tripArrTime').value,
         meansOfTravel:  document.getElementById('tripMeans').value,
         pricePerKg:     document.getElementById('tripPrice').value,
         availableWeight: document.getElementById('tripWeight').value,
       });
       closeModal('postTripModal');
       showToast('Trip posted successfully!', 'success');
-      loadDashboard();
       document.getElementById('postTripForm').reset();
-    } catch (err) {
-      errDiv.style.display = 'block';
-      errDiv.textContent = err.message;
+      loadTravellerData();
+    } catch(err) {
+      errDiv.style.display = 'block'; errDiv.textContent = err.message;
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:1rem">publish</span> Post Trip';
+      btn.disabled = false; btn.textContent = 'Post Trip';
     }
   });
 
   function showToast(msg, type='info') {
     const t = document.createElement('div');
-    t.className = `toast toast-${type}`;
-    t.textContent = msg;
+    t.className = `toast toast-${type}`; t.textContent = msg;
     document.getElementById('toast-container').appendChild(t);
     setTimeout(() => t.remove(), 3500);
   }
