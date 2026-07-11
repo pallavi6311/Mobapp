@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PeerDrop – Dashboard</title>
+  <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <img src="img/my-logo-cropped.svg" alt="PeerDrop"/>
+    PeerDrop
+  </div>
+  <div class="navbar-menu">
+    <a href="dashboard.html" class="active hide-mobile">Dashboard</a>
+    <a href="trips.html" class="hide-mobile">Trips</a>
+    <a href="shipments.html" class="hide-mobile">Shipments</a>
+    <a href="wallet.html" class="hide-mobile">Wallet</a>
+    <div id="userBadge" style="display:flex;align-items:center;gap:.5rem">
+      <div class="navbar-avatar" id="avatarInitial">U</div>
+      <span class="navbar-role-badge" id="roleBadge"></span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <!-- Welcome -->
+  <div style="margin-bottom:1.5rem">
+    <h2 id="welcomeMsg">Welcome back 👋</h2>
+    <p class="text-muted" id="welcomeSub"></p>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.75rem">
+    <div class="card" style="display:flex;align-items:center;gap:1rem">
+      <div style="width:48px;height:48px;border-radius:12px;background:#e8f4fd;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
+        <span class="material-symbols-outlined" style="color:var(--primary)">flight_takeoff</span>
+      </div>
+      <div>
+        <div class="fw-bold" style="font-size:1.5rem" id="statTrips">—</div>
+        <div class="text-muted text-sm" id="statTripsLabel">My Trips</div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:1rem">
+      <div style="width:48px;height:48px;border-radius:12px;background:#e6f4ea;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
+        <span class="material-symbols-outlined" style="color:var(--accent)">inventory_2</span>
+      </div>
+      <div>
+        <div class="fw-bold" style="font-size:1.5rem" id="statShipments">—</div>
+        <div class="text-muted text-sm">My Shipments</div>
+      </div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;gap:1rem">
+      <div style="width:48px;height:48px;border-radius:12px;background:#fff3e0;display:flex;align-items:center;justify-content:center;font-size:1.4rem">
+        <span class="material-symbols-outlined" style="color:var(--warn)">pending_actions</span>
+      </div>
+      <div>
+        <div class="fw-bold" style="font-size:1.5rem" id="statPending">—</div>
+        <div class="text-muted text-sm">Pending</div>
+      </div>
+    </div>
+    <div class="wallet-card" style="display:flex;flex-direction:column;justify-content:center">
+      <div class="wallet-label">Wallet Balance</div>
+      <div class="wallet-amount" id="walletBal">—</div>
+      <div class="wallet-subtext">Available to withdraw</div>
+    </div>
+  </div>
+
+  <!-- Traveller quick actions -->
+  <div id="travellerActions" style="display:none;margin-bottom:1.75rem">
+    <h3 class="section-title">Quick Actions</h3>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="openPostTripModal()">
+        <span class="material-symbols-outlined">add_circle</span> Post a New Trip
+      </button>
+      <a href="trips.html" class="btn btn-outline">
+        <span class="material-symbols-outlined">route</span> View My Trips
+      </a>
+      <a href="shipments.html" class="btn btn-ghost">
+        <span class="material-symbols-outlined">inbox</span> Incoming Requests
+      </a>
+      <a href="wallet.html" class="btn btn-ghost">
+        <span class="material-symbols-outlined">account_balance_wallet</span> My Wallet
+      </a>
+    </div>
+  </div>
+
+  <!-- Sender quick actions -->
+  <div id="senderActions" style="display:none;margin-bottom:1.75rem">
+    <h3 class="section-title">Quick Actions</h3>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+      <a href="trips.html" class="btn btn-primary">
+        <span class="material-symbols-outlined">search</span> Find a Traveller
+      </a>
+      <a href="shipments.html" class="btn btn-outline">
+        <span class="material-symbols-outlined">local_shipping</span> My Shipments
+      </a>
+    </div>
+  </div>
+
+  <!-- Recent activity -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem">
+    <div class="card">
+      <div class="card-header"><div class="card-title" id="recentColTitle">Recent Trips</div></div>
+      <div id="recentTrips">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Recent Shipments</div></div>
+      <div id="recentShipments">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Post Trip Modal (Traveller only) -->
+<div class="modal-overlay" id="postTripModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('postTripModal')">&times;</button>
+    <div class="modal-title">
+      <span class="material-symbols-outlined" style="vertical-align:middle">flight_takeoff</span>
+      Post a New Trip
+    </div>
+    <form id="postTripForm" novalidate>
+      <div style="display:flex;flex-direction:column;gap:.9rem">
+        <div class="form-row">
+          <div class="form-group">
+            <label>From (City)</label>
+            <input type="text" id="tripFrom" placeholder="e.g. Mumbai" required/>
+          </div>
+          <div class="form-group">
+            <label>To (City)</label>
+            <input type="text" id="tripTo" placeholder="e.g. Delhi" required/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Departure Date</label>
+            <input type="date" id="tripDepDate" required/>
+          </div>
+          <div class="form-group">
+            <label>Departure Time</label>
+            <input type="time" id="tripDepTime"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Arrival Date</label>
+            <input type="date" id="tripArrDate"/>
+          </div>
+          <div class="form-group">
+            <label>Arrival Time</label>
+            <input type="time" id="tripArrTime"/>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Means of Travel</label>
+            <select id="tripMeans">
+              <option value="flight">✈️ Flight</option>
+              <option value="train">🚆 Train</option>
+              <option value="bus">🚌 Bus</option>
+              <option value="car">🚗 Car</option>
+              <option value="bike">🏍️ Bike</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Price per Kg (₹)</label>
+            <input type="number" id="tripPrice" placeholder="50" min="1" required/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Available Weight Capacity (Kg)</label>
+          <input type="number" id="tripWeight" placeholder="5" min="0"/>
+        </div>
+        <div id="postTripError" class="error-msg" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="postTripBtn">
+          <span class="material-symbols-outlined" style="font-size:1rem">publish</span>
+          Post Trip
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  function openPostTripModal()  { document.getElementById('postTripModal').classList.add('open'); }
+  function closeModal(id)       { document.getElementById(id).classList.remove('open'); }
+  function logout()             { localStorage.clear(); window.location.href = 'login.html'; }
+</script>
+
+<script type="module">
+  import { api, getUser, getToken, formatAmount, timeAgo } from './js/api.js';
+
+  const user = getUser();
+  if (!user || !getToken()) { window.location.href = 'login.html'; }
+
+  // Navbar
+  document.getElementById('avatarInitial').textContent = (user.fullName || 'U')[0].toUpperCase();
+  document.getElementById('roleBadge').textContent = user.role === 'traveller' ? '✈️ Traveller' : '📦 Sender';
+  document.getElementById('welcomeMsg').textContent = `Welcome back, ${user.fullName?.split(' ')[0]} 👋`;
+  document.getElementById('welcomeSub').textContent = user.role === 'traveller'
+    ? 'Post trips and earn by carrying parcels'
+    : 'Find travellers to ship your parcels cheaply';
+
+  // Show role-based actions
+  document.getElementById(user.role === 'traveller' ? 'travellerActions' : 'senderActions').style.display = 'block';
+  if (user.role === 'sender') document.getElementById('recentColTitle').textContent = 'Available Trips';
+  if (user.role === 'traveller') document.getElementById('statTripsLabel').textContent = 'My Trips';
+
+  // Load data
+  async function loadDashboard() {
+    try {
+      const [shipments, wallet] = await Promise.all([api.getMyShipments(), api.getWallet()]);
+
+      document.getElementById('statShipments').textContent = shipments.length;
+      document.getElementById('statPending').textContent = shipments.filter(s => s.status === 'pending').length;
+      document.getElementById('walletBal').textContent = wallet.walletBalanceFormatted;
+
+      // Recent shipments
+      const sEl = document.getElementById('recentShipments');
+      if (!shipments.length) {
+        sEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No shipments yet</p></div>';
+      } else {
+        sEl.innerHTML = shipments.slice(0, 4).map(s => `
+          <div class="shipment-item" onclick="location.href='shipments.html'">
+            <div class="shipment-header">
+              <span class="shipment-route">${s.from} → ${s.to}</span>
+              <span class="badge badge-${s.status}">${s.status}</span>
+            </div>
+            <div class="text-muted text-sm">${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
+          </div>`).join('');
+      }
+
+      // Recent trips
+      if (user.role === 'traveller') {
+        const trips = await api.getMyTrips();
+        document.getElementById('statTrips').textContent = trips.length;
+        const tEl = document.getElementById('recentTrips');
+        if (!trips.length) {
+          tEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>No trips posted yet</p></div>';
+        } else {
+          tEl.innerHTML = trips.slice(0, 4).map(t => `
+            <div class="shipment-item" onclick="location.href='trips.html'">
+              <div class="shipment-header">
+                <span class="shipment-route">${t.from} → ${t.to}</span>
+                <span class="badge badge-${t.status}">${t.status}</span>
+              </div>
+              <div class="text-muted text-sm">${t.meansOfTravel} · ₹${t.pricePerKg}/kg · ${timeAgo(t.createdAt)}</div>
+            </div>`).join('');
+        }
+      } else {
+        const trips = await api.getTrips();
+        document.getElementById('statTrips').textContent = trips.length;
+        const tEl = document.getElementById('recentTrips');
+        if (!trips.length) {
+          tEl.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>No trips available</p></div>';
+        } else {
+          tEl.innerHTML = trips.slice(0, 4).map(t => `
+            <div class="trip-card" onclick="location.href='trips.html'">
+              <div class="trip-route">
+                <span class="city">${t.from}</span>
+                <span class="arrow">→</span>
+                <span class="city">${t.to}</span>
+              </div>
+              <div class="trip-meta">
+                <span>📅 ${t.departureDate}</span>
+                <span>${travelIcon(t.meansOfTravel)} ${t.meansOfTravel}</span>
+              </div>
+              <div class="trip-price">₹${t.pricePerKg}/kg</div>
+            </div>`).join('');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function travelIcon(m) {
+    const icons = { flight: '✈️', train: '🚆', bus: '🚌', car: '🚗', bike: '🏍️' };
+    return icons[m] || '🚀';
+  }
+
+  loadDashboard();
+
+  // Post Trip form
+  document.getElementById('postTripForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errDiv = document.getElementById('postTripError');
+    const btn    = document.getElementById('postTripBtn');
+    errDiv.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Posting…';
+
+    try {
+      await api.postTrip({
+        from:           document.getElementById('tripFrom').value.trim(),
+        to:             document.getElementById('tripTo').value.trim(),
+        departureDate:  document.getElementById('tripDepDate').value,
+        departureTime:  document.getElementById('tripDepTime').value,
+        arrivalDate:    document.getElementById('tripArrDate').value,
+        arrivalTime:    document.getElementById('tripArrTime').value,
+        meansOfTravel:  document.getElementById('tripMeans').value,
+        pricePerKg:     document.getElementById('tripPrice').value,
+        availableWeight: document.getElementById('tripWeight').value,
+      });
+      closeModal('postTripModal');
+      showToast('Trip posted successfully!', 'success');
+      loadDashboard();
+      document.getElementById('postTripForm').reset();
+    } catch (err) {
+      errDiv.style.display = 'block';
+      errDiv.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:1rem">publish</span> Post Trip';
+    }
+  });
+
+  function showToast(msg, type='info') {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PeerDrop – Trips</title>
+  <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="navbar-brand">
+    <img src="img/my-logo-cropped.svg" alt="PeerDrop"/> PeerDrop
+  </div>
+  <div class="navbar-menu">
+    <a href="dashboard.html" class="hide-mobile">Dashboard</a>
+    <a href="trips.html" class="active hide-mobile">Trips</a>
+    <a href="shipments.html" class="hide-mobile">Shipments</a>
+    <a href="wallet.html" class="hide-mobile">Wallet</a>
+    <div class="navbar-avatar" id="avatarInitial">U</div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- Traveller view: My Trips + Post Trip -->
+  <div id="travellerView" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem">
+      <h2>My Trips</h2>
+      <button class="btn btn-primary" onclick="openModal('postTripModal')">
+        <span class="material-symbols-outlined">add</span> Post a Trip
+      </button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('open')">Open</button>
+      <button class="tab-btn" onclick="switchTab('closed')">Closed</button>
+      <button class="tab-btn" onclick="switchTab('all')">All</button>
+    </div>
+
+    <div id="myTripsContainer">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Sender view: Search & Browse -->
+  <div id="senderView" style="display:none">
+    <h2 style="margin-bottom:1.25rem">Find a Traveller</h2>
+
+    <div class="search-bar">
+      <div class="form-group">
+        <label>From</label>
+        <input type="text" id="searchFrom" placeholder="Origin city"/>
+      </div>
+      <div class="form-group">
+        <label>To</label>
+        <input type="text" id="searchTo" placeholder="Destination city"/>
+      </div>
+      <button class="btn btn-primary" onclick="searchTrips()">
+        <span class="material-symbols-outlined">search</span> Search
+      </button>
+      <button class="btn btn-ghost" onclick="loadAllTrips()">Clear</button>
+    </div>
+
+    <div id="tripsContainer">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Post Trip Modal -->
+<div class="modal-overlay" id="postTripModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('postTripModal')">&times;</button>
+    <div class="modal-title">✈️ Post a New Trip</div>
+    <form id="postTripForm">
+      <div style="display:flex;flex-direction:column;gap:.85rem">
+        <div class="form-row">
+          <div class="form-group"><label>From</label><input type="text" id="tripFrom" placeholder="Mumbai" required/></div>
+          <div class="form-group"><label>To</label><input type="text" id="tripTo" placeholder="Delhi" required/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Departure Date</label><input type="date" id="tripDepDate" required/></div>
+          <div class="form-group"><label>Departure Time</label><input type="time" id="tripDepTime"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Arrival Date</label><input type="date" id="tripArrDate"/></div>
+          <div class="form-group"><label>Arrival Time</label><input type="time" id="tripArrTime"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Means of Travel</label>
+            <select id="tripMeans">
+              <option value="flight">✈️ Flight</option>
+              <option value="train">🚆 Train</option>
+              <option value="bus">🚌 Bus</option>
+              <option value="car">🚗 Car</option>
+              <option value="bike">🏍️ Bike</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Price per Kg (₹)</label><input type="number" id="tripPrice" placeholder="50" min="1" required/></div>
+        </div>
+        <div class="form-group"><label>Available Weight (Kg)</label><input type="number" id="tripWeight" placeholder="5" min="0"/></div>
+        <div id="postTripError" class="error-msg" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-block" id="postTripBtn">Post Trip</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Request Shipment Modal (Sender) -->
+<div class="modal-overlay" id="requestModal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('requestModal')">&times;</button>
+    <div class="modal-title">📦 Send a Parcel</div>
+    <div id="tripSummary" style="background:var(--gray-100);border-radius:8px;padding:.75rem;margin-bottom:1rem;font-size:.875rem;color:var(--gray-700)"></div>
+    <form id="requestForm">
+      <div style="display:flex;flex-direction:column;gap:.85rem">
+        <div class="form-group"><label>What are you sending?</label><input type="text" id="parcelDesc" placeholder="e.g. Clothes, Books, Electronics" required/></div>
+        <div class="form-group"><label>Weight (Kg)</label><input type="number" id="parcelWeight" placeholder="2.5" min="0.1" step="0.1" required/></div>
+        <div class="form-group"><label>Pickup Spot (meetup location)</label><input type="text" id="pickupSpot" placeholder="e.g. Dadar Station Exit Gate 1" required/></div>
+        <div class="form-group"><label>Delivery Address</label><input type="text" id="deliveryAddr" placeholder="Full delivery address" required/></div>
+        <div class="form-group"><label>Receiver's Phone</label><input type="tel" id="receiverPhone" placeholder="+91 9876543210"/></div>
+        <div id="costEstimate" style="display:none;background:var(--accent-l);border-radius:8px;padding:.75rem;font-size:.875rem;font-weight:700;color:var(--accent)"></div>
+        <div id="requestError" class="error-msg" style="display:none"></div>
+        <button type="submit" class="btn btn-accent btn-block" id="requestBtn">Send Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+  let currentTripId = null;
+  let currentTripPrice = 0;
+  let currentFilter = 'open';
+  let allMyTrips = [];
+
+  function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+  function openModal(id)  { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function switchTab(filter) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      b.classList.toggle('active', ['open','closed','all'][i] === filter);
+    });
+    renderMyTrips();
+  }
+
+  function renderMyTrips() {
+    const filtered = currentFilter === 'all' ? allMyTrips : allMyTrips.filter(t => t.status === currentFilter);
+    const el = document.getElementById('myTripsContainer');
+    if (!filtered.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">🗺️</div><p>No trips here yet</p></div>';
+      return;
+    }
+    el.innerHTML = filtered.map(t => `
+      <div class="trip-card" style="margin-bottom:.75rem;cursor:default">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+          <div class="trip-route">
+            <span class="city">${t.from}</span>
+            <span class="arrow">→</span>
+            <span class="city">${t.to}</span>
+          </div>
+          <span class="badge badge-${t.status}">${t.status}</span>
+        </div>
+        <div class="trip-meta">
+          <span>📅 ${t.departureDate}</span>
+          <span>${travelIcon(t.meansOfTravel)} ${t.meansOfTravel}</span>
+          <span>💰 ₹${t.pricePerKg}/kg</span>
+          ${t.availableWeight ? `<span>⚖️ ${t.availableWeight} kg cap</span>` : ''}
+        </div>
+        ${t.status === 'open' ? `<div style="margin-top:.75rem">
+          <button class="btn btn-ghost btn-sm" onclick="closeTrip('${t.id}')">
+            <span class="material-symbols-outlined" style="font-size:.9rem">lock</span> Close Trip
+          </button>
+        </div>` : ''}
+      </div>`).join('');
+  }
+
+  function travelIcon(m) {
+    return { flight:'✈️', train:'🚆', bus:'🚌', car:'🚗', bike:'🏍️' }[m] || '🚀';
+  }
+</script>
+
+<script type="module">
+  import { api, getUser, getToken, timeAgo } from './js/api.js';
+
+  const user = getUser();
+  if (!user || !getToken()) { window.location.href = 'login.html'; }
+
+  document.getElementById('avatarInitial').textContent = (user.fullName || 'U')[0].toUpperCase();
+
+  if (user.role === 'traveller') {
+    document.getElementById('travellerView').style.display = 'block';
+    loadMyTrips();
+  } else {
+    document.getElementById('senderView').style.display = 'block';
+    loadAllTrips();
+  }
+
+  window.loadAllTrips = async function(from='', to='') {
+    const el = document.getElementById('tripsContainer');
+    el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+    try {
+      const q = (from || to) ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
+      const trips = await api.getTrips(q);
+      if (!trips.length) {
+        el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>No trips found. Try different cities.</p></div>';
+        return;
+      }
+      el.innerHTML = '<div class="trips-grid">' + trips.map(t => `
+        <div class="trip-card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+            <div class="trip-route">
+              <span class="city">${t.from}</span>
+              <span class="arrow">→</span>
+              <span class="city">${t.to}</span>
+            </div>
+            <span class="badge badge-open">open</span>
+          </div>
+          <div class="trip-meta">
+            <span>📅 ${t.departureDate} ${t.departureTime || ''}</span>
+            <span>${travelIcon(t.meansOfTravel)} ${t.meansOfTravel}</span>
+            ${t.availableWeight ? `<span>⚖️ ${t.availableWeight} kg available</span>` : ''}
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
+            <div class="trip-price">₹${t.pricePerKg}/kg · by ${t.travellerName}</div>
+            <button class="btn btn-accent btn-sm" onclick="openRequest('${t.id}', ${t.pricePerKg}, '${t.from}', '${t.to}', '${t.departureDate}')">
+              <span class="material-symbols-outlined" style="font-size:.9rem">send</span> Request to Ship
+            </button>
+          </div>
+          <div class="text-muted text-sm" style="margin-top:.4rem">${timeAgo(t.createdAt)}</div>
+        </div>`).join('') + '</div>';
+    } catch (err) {
+      el.innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  };
+
+  window.searchTrips = function() {
+    const from = document.getElementById('searchFrom').value.trim();
+    const to   = document.getElementById('searchTo').value.trim();
+    window.loadAllTrips(from, to);
+  };
+
+  async function loadMyTrips() {
+    try {
+      const trips = await api.getMyTrips();
+      window.allMyTrips = trips;
+      window.renderMyTrips();
+    } catch (err) {
+      document.getElementById('myTripsContainer').innerHTML = `<div class="error-msg">${err.message}</div>`;
+    }
+  }
+
+  window.closeTrip = async function(id) {
+    if (!confirm('Close this trip? Senders will no longer be able to request.')) return;
+    try {
+      await api.closeTrip(id);
+      showToast('Trip closed', 'info');
+      loadMyTrips();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // Post Trip form
+  document.getElementById('postTripForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errDiv = document.getElementById('postTripError');
+    const btn    = document.getElementById('postTripBtn');
+    errDiv.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Posting…';
+    try {
+      await api.postTrip({
+        from: document.getElementById('tripFrom').value.trim(),
+        to:   document.getElementById('tripTo').value.trim(),
+        departureDate:  document.getElementById('tripDepDate').value,
+        departureTime:  document.getElementById('tripDepTime').value,
+        arrivalDate:    document.getElementById('tripArrDate').value,
+        arrivalTime:    document.getElementById('tripArrTime').value,
+        meansOfTravel:  document.getElementById('tripMeans').value,
+        pricePerKg:     document.getElementById('tripPrice').value,
+        availableWeight: document.getElementById('tripWeight').value,
+      });
+      closeModal('postTripModal');
+      showToast('Trip posted!', 'success');
+      document.getElementById('postTripForm').reset();
+      loadMyTrips();
+    } catch (err) {
+      errDiv.style.display = 'block'; errDiv.textContent = err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Post Trip';
+    }
+  });
+
+  // Open request modal
+  window.openRequest = function(tripId, price, from, to, date) {
+    window.currentTripId    = tripId;
+    window.currentTripPrice = price;
+    document.getElementById('tripSummary').innerHTML =
+      `<strong>${from} → ${to}</strong> on ${date} · ₹${price}/kg`;
+    document.getElementById('costEstimate').style.display = 'none';
+    document.getElementById('requestForm').reset();
+    openModal('requestModal');
+  };
+
+  // Live cost estimate
+  document.getElementById('parcelWeight').addEventListener('input', () => {
+    const w = parseFloat(document.getElementById('parcelWeight').value) || 0;
+    const cost = w * window.currentTripPrice;
+    const el = document.getElementById('costEstimate');
+    if (cost > 0) {
+      el.style.display = 'block';
+      el.textContent = `Estimated cost: ₹${cost.toFixed(2)} (${w} kg × ₹${window.currentTripPrice}/kg)`;
+    } else {
+      el.style.display = 'none';
+    }
+  });
+
+  // Submit shipment request
+  document.getElementById('requestForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errDiv = document.getElementById('requestError');
+    const btn    = document.getElementById('requestBtn');
+    errDiv.style.display = 'none';
+    btn.disabled = true; btn.textContent = 'Sending…';
+    try {
+      await api.requestShipment({
+        tripId:             window.currentTripId,
+        parcelDescription:  document.getElementById('parcelDesc').value.trim(),
+        weightKg:           document.getElementById('parcelWeight').value,
+        pickupSpot:         document.getElementById('pickupSpot').value.trim(),
+        deliveryAddress:    document.getElementById('deliveryAddr').value.trim(),
+        receiverPhone:      document.getElementById('receiverPhone').value.trim(),
+      });
+      closeModal('requestModal');
+      showToast('Request sent! Waiting for traveller to accept.', 'success');
+      setTimeout(() => { window.location.href = 'shipments.html'; }, 1500);
+    } catch (err) {
+      errDiv.style.display = 'block'; errDiv.textContent = err.message;
+    } finally {
+      btn.disabled = false; btn.textContent = 'Send Request';
+    }
+  });
+
+  function travelIcon(m) {
+    return { flight:'✈️', train:'🚆', bus:'🚌', car:'🚗', bike:'🏍️' }[m] || '🚀';
+  }
+
+  function showToast(msg, type='info') {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`; t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+  }
+</script>
+</body>
+</html>

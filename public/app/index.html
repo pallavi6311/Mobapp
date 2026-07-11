@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PeerDrop – Peer to Peer Delivery</title>
+  <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+  <style>
+    .hero {
+      background: linear-gradient(135deg, var(--primary) 0%, #0d6898 60%, #1b8a3a 100%);
+      min-height: 92vh; display: flex; align-items: center; justify-content: center;
+      text-align: center; padding: 2rem 1.5rem; color: #fff;
+    }
+    .hero-content { max-width: 700px; }
+    .hero h1 { font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+    .hero p  { font-size: 1.2rem; opacity: .85; margin-bottom: 2rem; line-height: 1.6; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    @media(max-width:600px){ .hero h1{ font-size:2rem; } }
+
+    .how-section { padding: 5rem 1.5rem; background: #fff; }
+    .how-section h2 { text-align: center; margin-bottom: 3rem; }
+    .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px,1fr)); gap: 2rem; max-width: 1000px; margin: 0 auto; }
+    .how-card { text-align: center; padding: 1.5rem; }
+    .how-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .how-card h3 { color: var(--primary); margin-bottom: .5rem; }
+    .how-card p { color: var(--gray-700); font-size: .9rem; line-height: 1.6; }
+
+    .roles-section { padding: 5rem 1.5rem; background: var(--gray-50); }
+    .roles-section h2 { text-align: center; margin-bottom: 3rem; }
+    .roles-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 800px; margin: 0 auto; }
+    .role-feature { background: #fff; border-radius: 16px; padding: 2rem; box-shadow: var(--shadow); }
+    .role-feature .role-emoji { font-size: 2.5rem; margin-bottom: 1rem; }
+    .role-feature h3 { color: var(--primary); margin-bottom: .75rem; }
+    .role-feature ul { color: var(--gray-700); font-size: .9rem; display: flex; flex-direction: column; gap: .4rem; padding-left: 1rem; }
+    @media(max-width:600px){ .roles-grid{ grid-template-columns:1fr; } }
+
+    .cta-section { background: linear-gradient(135deg, var(--primary), #0d6898); color: #fff; padding: 5rem 1.5rem; text-align: center; }
+    .cta-section h2 { font-size: 2rem; margin-bottom: 1rem; }
+    .cta-section p  { opacity: .85; margin-bottom: 2rem; font-size: 1.1rem; }
+
+    .landing-footer { background: var(--primary-d); color: rgba(255,255,255,.7); text-align: center; padding: 2rem; font-size: .875rem; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar" style="position:fixed;top:0;left:0;right:0;z-index:100">
+  <div class="navbar-brand">
+    <img src="img/my-logo-cropped.svg" alt="PeerDrop"/> PeerDrop
+  </div>
+  <div class="navbar-menu">
+    <a href="#how" class="hide-mobile">How it Works</a>
+    <a href="#roles" class="hide-mobile">For You</a>
+    <a href="login.html" class="btn btn-ghost btn-sm">Login</a>
+    <a href="signup.html" class="btn btn-accent btn-sm">Get Started</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div style="padding-top:60px">
+  <div class="hero">
+    <div class="hero-content">
+      <div style="font-size:.9rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.8;margin-bottom:1rem">
+        🚀 The smarter way to ship
+      </div>
+      <h1>Connect Travelers with Senders. Save on Every Shipment.</h1>
+      <p>
+        Travelling somewhere? Earn by carrying a parcel.<br/>
+        Need to send something? Find a traveller going your way for a fraction of courier costs.
+      </p>
+      <div class="hero-btns">
+        <a href="signup.html?role=traveller" class="btn btn-accent btn-lg">
+          ✈️ I'm a Traveller
+        </a>
+        <a href="signup.html?role=sender" class="btn btn-outline btn-lg" style="border-color:#fff;color:#fff">
+          📦 I Want to Send
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- How it works -->
+<div id="how" class="how-section">
+  <div class="container">
+    <h2>How PeerDrop Works</h2>
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-icon">✈️</div>
+        <h3>1. Traveller Posts a Trip</h3>
+        <p>Going from Mumbai to Delhi? Post your trip with available luggage space and set your price per kg.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon">🔍</div>
+        <h3>2. Sender Finds the Trip</h3>
+        <p>Need to send a parcel to Delhi? Search, compare travellers and send a shipping request in seconds.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon">🤝</div>
+        <h3>3. Accept &amp; Meet</h3>
+        <p>Traveller accepts the request. Both agree on a common pickup spot to handover the parcel.</p>
+      </div>
+      <div class="how-card">
+        <div class="how-icon">💰</div>
+        <h3>4. Pay &amp; Earn</h3>
+        <p>Sender pays securely via Razorpay. Once delivery is confirmed, funds are released to the traveller's wallet.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- For who -->
+<div id="roles" class="roles-section">
+  <div class="container">
+    <h2>Built for Everyone</h2>
+    <div class="roles-grid">
+      <div class="role-feature">
+        <div class="role-emoji">✈️</div>
+        <h3>For Travellers</h3>
+        <ul>
+          <li>Post your trip in 2 minutes</li>
+          <li>Get paid to carry parcels you'd carry anyway</li>
+          <li>Accept or reject any request</li>
+          <li>Withdraw earnings to your bank</li>
+          <li>Build reputation with ratings</li>
+        </ul>
+        <a href="signup.html?role=traveller" class="btn btn-primary" style="margin-top:1.25rem">
+          Start Earning →
+        </a>
+      </div>
+      <div class="role-feature">
+        <div class="role-emoji">📦</div>
+        <h3>For Senders</h3>
+        <ul>
+          <li>Ship up to 10x cheaper than couriers</li>
+          <li>Track your parcel status live</li>
+          <li>Secure payment via Razorpay</li>
+          <li>Confirm delivery before funds release</li>
+          <li>Chat directly with your traveller</li>
+        </ul>
+        <a href="signup.html?role=sender" class="btn btn-accent" style="margin-top:1.25rem">
+          Ship Something →
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="container">
+    <h2>Ready to PeerDrop?</h2>
+    <p>Join thousands of travellers and senders already using PeerDrop.</p>
+    <a href="signup.html" class="btn btn-accent btn-lg">Create Free Account</a>
+  </div>
+</div>
+
+<footer class="landing-footer">
+  <p>© 2024 PeerDrop · Privacy Policy · Terms of Service</p>
+</footer>
+
+<script>
+  // Auto-redirect if already logged in
+  const user = localStorage.getItem('ll_user');
+  const token = localStorage.getItem('ll_token');
+  if (user && token) { window.location.href = 'dashboard.html'; }
+</script>
+</body>
+</html>
