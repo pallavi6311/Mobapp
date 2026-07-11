@@ -12,9 +12,14 @@ let _auth: Auth | null = null;
 function getApp(): App {
   if (_app) return _app;
 
-  const projectId   = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey  = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const projectId   = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  let privateKey    = process.env.FIREBASE_PRIVATE_KEY;
+
+  // Handle both formats: with \n escape sequences and with real newlines
+  if (privateKey) {
+    privateKey = privateKey.replace(/\\n/g, '\n').replace(/^"|"$/g, '');
+  }
 
   if (!projectId || !clientEmail || !privateKey ||
       privateKey.includes('YOUR_PRIVATE_KEY')) {
