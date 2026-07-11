@@ -61,9 +61,11 @@ router.get('/my', verifyToken, async (req: AuthRequest, res: Response) => {
     const field = req.user!.role === 'sender' ? 'senderId' : 'travellerId';
     const snap = await db().collection('shipments')
       .where(field, '==', req.user!.uid)
-      .orderBy('createdAt', 'desc')
       .get();
-    return res.json(snap.docs.map(d => d.data()));
+    // Sort in memory to avoid composite index requirement
+    const results = snap.docs.map(d => d.data());
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return res.json(results);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

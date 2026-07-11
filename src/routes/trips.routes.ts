@@ -47,10 +47,11 @@ router.get('/', async (req: AuthRequest, res: Response) => {
     const { from, to } = req.query;
     const snap = await db().collection('trips')
       .where('status', '==', 'open')
-      .orderBy('createdAt', 'desc')
       .get();
 
     let trips = snap.docs.map(d => d.data());
+    // Sort in memory
+    trips.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     if (from) trips = trips.filter(t => t.from.toLowerCase().includes((from as string).toLowerCase()));
     if (to)   trips = trips.filter(t => t.to.toLowerCase().includes((to as string).toLowerCase()));
 
@@ -65,9 +66,11 @@ router.get('/my', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
     const snap = await db().collection('trips')
       .where('travellerId', '==', req.user!.uid)
-      .orderBy('createdAt', 'desc')
       .get();
-    return res.json(snap.docs.map(d => d.data()));
+    // Sort in memory - no composite index needed
+    const results = snap.docs.map(d => d.data());
+    results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return res.json(results);
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
