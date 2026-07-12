@@ -1,8 +1,22 @@
 // Central API helper — all calls go through here
 const BASE = '/api';
 
+// Import Firebase auth to get fresh tokens
+import { firebaseAuth } from './firebase-config.js';
+
+async function getFreshToken() {
+  const user = firebaseAuth.currentUser;
+  if (user) {
+    // Always get a fresh token (auto-refreshes if expired)
+    const token = await user.getIdToken(true);
+    localStorage.setItem('ll_token', token);
+    return token;
+  }
+  return localStorage.getItem('ll_token');
+}
+
 export async function apiCall(method, path, body = null) {
-  const token = localStorage.getItem('ll_token');
+  const token = await getFreshToken();
   const headers = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
