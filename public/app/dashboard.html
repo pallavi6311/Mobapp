@@ -179,7 +179,12 @@
         <div id="tRecentTrips"><div class="loader"><div class="spinner"></div></div></div>
       </div>
       <div class="card">
-        <div class="card-header"><div class="card-title">Incoming Requests</div></div>
+        <div class="card-header">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="card-title">Incoming Requests</div>
+            <a href="shipments.html" style="font-size:.8rem;color:var(--primary);font-weight:700">View All →</a>
+          </div>
+        </div>
         <div id="tRecentShipments"><div class="loader"><div class="spinner"></div></div></div>
       </div>
     </div>
@@ -353,15 +358,24 @@
         </div>`).join('') :
         '<div class="empty-state"><div class="empty-icon">🗺️</div><p>No trips yet. Post your first trip!</p></div>';
 
-      // Recent shipments/requests
+      // Recent shipments/requests — with inline Accept/Reject for pending ones
       const sEl = document.getElementById('tRecentShipments');
-      sEl.innerHTML = shipments.length ? shipments.slice(0,3).map(s => `
-        <div class="shipment-item">
+      // Store shipments globally so accept/reject handlers can access them
+      window._dashShipments = shipments;
+      sEl.innerHTML = shipments.length ? shipments.slice(0,5).map(s => `
+        <div class="shipment-item" style="padding:.75rem 0;border-bottom:1px solid var(--gray-200)">
           <div class="shipment-header">
             <span class="shipment-route">${s.from} → ${s.to}</span>
             <span class="badge badge-${s.status}">${s.status}</span>
           </div>
           <div class="text-muted text-sm">📦 ${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
+          <div class="text-muted text-sm">👤 Sender: ${s.senderName} · 📍 ${s.pickupSpot}</div>
+          ${s.status === 'pending' ? `
+          <div style="display:flex;gap:.5rem;margin-top:.6rem">
+            <button class="btn btn-accent btn-sm" onclick="dashAccept('${s.id}')">✅ Accept</button>
+            <button class="btn btn-danger btn-sm" onclick="dashReject('${s.id}')">❌ Reject</button>
+          </div>` : ''}
+          ${s.status === 'accepted' ? `<div class="text-muted text-sm" style="margin-top:.4rem;color:var(--accent);font-weight:600">⏳ Waiting for sender payment</div>` : ''}
         </div>`).join('') :
         '<div class="empty-state"><div class="empty-icon">📬</div><p>No requests yet</p></div>';
 
@@ -436,6 +450,24 @@
       btn.disabled = false; btn.textContent = 'Post Trip';
     }
   });
+
+  // Accept / Reject directly from dashboard
+  window.dashAccept = async function(id) {
+    try {
+      await api.respondShipment(id, 'accept');
+      showToast('Request accepted!', 'success');
+      loadTravellerData();
+    } catch(err) { showToast(err.message, 'error'); }
+  };
+
+  window.dashReject = async function(id) {
+    if (!confirm('Reject this request?')) return;
+    try {
+      await api.respondShipment(id, 'reject');
+      showToast('Request rejected', 'info');
+      loadTravellerData();
+    } catch(err) { showToast(err.message, 'error'); }
+  };
 
   function showToast(msg, type='info') {
     const t = document.createElement('div');

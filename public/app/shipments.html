@@ -114,14 +114,22 @@
     ? 'Incoming Shipment Requests' : 'My Shipments';
 
   async function loadShipments() {
+    document.getElementById('shipmentsContainer').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
     try {
       const data = await api.getMyShipments();
       window.allShipments = data;
       renderShipments();
     } catch (err) {
-      document.getElementById('shipmentsContainer').innerHTML = `<div class="error-msg">${err.message}</div>`;
+      document.getElementById('shipmentsContainer').innerHTML =
+        `<div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <p style="color:var(--danger)">${err.message}</p>
+          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="loadShipments()">Retry</button>
+        </div>`;
     }
   }
+  // expose so retry button works
+  window.loadShipments = loadShipments;
 
   window.renderShipments = function() {
     const list = window.currentFilter === 'all'
