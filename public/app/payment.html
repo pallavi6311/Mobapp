@@ -3,26 +3,37 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PeerDrop – Secure Payment</title>
+  <title>PeerDrop – Pay via UPI</title>
   <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
   <link rel="stylesheet" href="styles/app.css"/>
-  <!-- Cashfree JS SDK (sandbox + production auto-select) -->
-  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
   <style>
     body { background:#f0f4f8; }
     .pay-wrap  { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
     .pay-card  { background:#fff; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,.13); width:100%; max-width:460px; overflow:hidden; }
-    .pay-header{ background:linear-gradient(135deg,var(--primary),#0d6898); color:#fff; padding:1.5rem; }
-    .pay-header .merchant { font-size:.8rem; opacity:.8; margin-bottom:4px; }
-    .pay-header .amount   { font-size:2.2rem; font-weight:800; }
-    .pay-header .desc     { font-size:.85rem; opacity:.8; margin-top:4px; }
+    .pay-header{ background:linear-gradient(135deg,#074061,#0d6898); color:#fff; padding:1.5rem; text-align:center; }
+    .pay-amount{ font-size:2.5rem; font-weight:800; }
+    .pay-desc  { font-size:.85rem; opacity:.8; margin-top:4px; }
     .pay-body  { padding:1.5rem; }
-    .shipment-info { background:var(--gray-100); border-radius:10px; padding:.85rem 1rem; font-size:.875rem; color:var(--gray-700); margin-bottom:1.25rem; display:flex; flex-direction:column; gap:.35rem; }
-    .cf-drop   { min-height:60px; margin-bottom:1rem; }
-    .secure-badge { display:flex; align-items:center; justify-content:center; gap:6px; font-size:.75rem; color:var(--gray-400); margin-top:1rem; }
-    .success-box { text-align:center; padding:1.5rem 0; }
-    .success-icon { font-size:4rem; margin-bottom:.75rem; }
+
+    .info-box  { background:var(--gray-100); border-radius:10px; padding:.85rem 1rem; font-size:.875rem; color:var(--gray-700); margin-bottom:1.25rem; display:flex; flex-direction:column; gap:.3rem; }
+
+    /* UPI App buttons */
+    .upi-grid  { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1.25rem; }
+    .upi-btn   { border:2px solid var(--gray-200); border-radius:12px; padding:.85rem .5rem; text-align:center; cursor:pointer; text-decoration:none; color:var(--gray-900); transition:.2s; display:block; }
+    .upi-btn:hover { border-color:var(--primary); background:#e8f4fd; transform:translateY(-2px); }
+    .upi-btn .upi-icon { font-size:2rem; margin-bottom:4px; }
+    .upi-btn .upi-name { font-size:.75rem; font-weight:700; color:var(--primary); }
+
+    /* QR code box */
+    .qr-box    { border:2px dashed var(--gray-300); border-radius:12px; padding:1.25rem; text-align:center; margin-bottom:1.25rem; }
+    .qr-img    { width:180px; height:180px; margin:0 auto .75rem; display:block; }
+
+    /* After pay section */
+    .after-pay { background:#e8f5e9; border-radius:10px; padding:1rem; text-align:center; margin-bottom:1.25rem; }
+
+    .step-list  { display:flex; flex-direction:column; gap:.5rem; font-size:.85rem; color:var(--gray-700); margin-bottom:1.25rem; }
+    .step-item  { display:flex; align-items:flex-start; gap:.5rem; }
   </style>
 </head>
 <body>
@@ -30,47 +41,85 @@
 <div class="pay-wrap">
   <div class="pay-card">
     <div class="pay-header">
-      <div class="merchant">🔒 PeerDrop Secure Checkout</div>
-      <div class="amount" id="payAmount">Loading…</div>
-      <div class="desc"   id="payDesc">Shipment payment</div>
+      <div style="font-size:.8rem;opacity:.8;margin-bottom:4px">🔒 PeerDrop · UPI Payment</div>
+      <div class="pay-amount" id="payAmount">Loading…</div>
+      <div class="pay-desc"   id="payDesc">Shipment payment</div>
     </div>
 
-    <div class="pay-body" id="payBody">
-      <!-- Shipment summary -->
-      <div class="shipment-info" id="shipmentInfo" style="display:none">
+    <div class="pay-body">
+
+      <!-- Shipment info -->
+      <div class="info-box" id="shipmentInfo" style="display:none">
         <div><strong id="infoRoute">—</strong></div>
         <div>📦 <span id="infoParcel">—</span></div>
         <div>✈️ Traveller: <span id="infoTraveller">—</span></div>
-        <div>📍 Pickup: <span id="infoPickup">—</span></div>
       </div>
 
-      <!-- Cashfree UPI drop element renders here -->
-      <div id="cashfreeContainer" class="cf-drop"></div>
-
-      <!-- Loading state -->
-      <div id="loadingState" class="loader" style="margin:1.5rem 0">
-        <div class="spinner"></div>
-        <p style="text-align:center;color:var(--gray-400);margin-top:.5rem;font-size:.85rem">Setting up payment…</p>
+      <!-- Loading -->
+      <div id="loadingState" style="text-align:center;padding:2rem 0">
+        <div class="spinner" style="margin:0 auto 1rem"></div>
+        <p style="color:var(--gray-400);font-size:.85rem">Loading payment details…</p>
       </div>
 
-      <!-- Error state -->
+      <!-- Payment UI -->
+      <div id="paymentUI" style="display:none">
+
+        <!-- How to pay steps -->
+        <div class="step-list">
+          <div class="step-item"><span>1️⃣</span><span>Tap any UPI app below to pay instantly</span></div>
+          <div class="step-item"><span>2️⃣</span><span>Complete payment in your UPI app</span></div>
+          <div class="step-item"><span>3️⃣</span><span>Come back and tap <strong>"I have paid"</strong></span></div>
+        </div>
+
+        <!-- UPI app deep links -->
+        <div class="upi-grid" id="upiGrid">
+          <!-- filled by JS -->
+        </div>
+
+        <!-- QR code for desktop / scanner -->
+        <div class="qr-box">
+          <div style="font-size:.8rem;font-weight:700;color:var(--gray-500);margin-bottom:.75rem">OR SCAN QR CODE</div>
+          <img id="qrImg" class="qr-img" alt="UPI QR Code"/>
+          <div style="font-size:.75rem;color:var(--gray-400)">Open any UPI app → Scan QR → Pay</div>
+        </div>
+
+        <!-- UPI ID manual option -->
+        <div style="text-align:center;margin-bottom:1.25rem;font-size:.82rem;color:var(--gray-500)">
+          Or pay to UPI ID: <strong id="upiIdDisplay" style="color:var(--primary)">—</strong>
+        </div>
+
+        <!-- I have paid button -->
+        <div class="after-pay">
+          <div style="font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:.6rem">✅ Paid? Tap below to confirm</div>
+          <button class="btn btn-accent btn-block btn-lg" id="iHavePaidBtn" onclick="confirmPayment()">
+            ✅ I Have Paid
+          </button>
+          <div style="font-size:.75rem;color:var(--gray-400);margin-top:.4rem">Your shipment will be activated after confirmation</div>
+        </div>
+
+        <button class="btn btn-ghost btn-block btn-sm" onclick="location.href='shipments.html'" style="margin-top:.5rem">
+          Cancel
+        </button>
+      </div>
+
+      <!-- Success -->
+      <div id="successState" style="display:none;text-align:center;padding:1.5rem 0">
+        <div style="font-size:4rem;margin-bottom:.75rem">✅</div>
+        <div style="font-weight:800;font-size:1.3rem;color:var(--accent)">Payment Confirmed!</div>
+        <div style="color:var(--gray-700);font-size:.875rem;margin:.5rem 0 1.5rem">
+          The traveller has been notified and will pick up your parcel.
+        </div>
+        <button class="btn btn-primary btn-block" onclick="location.href='shipments.html'">
+          View My Shipments →
+        </button>
+      </div>
+
+      <!-- Error -->
       <div id="errorState" style="display:none">
         <div class="error-msg" id="errorMsg"></div>
         <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="location.href='shipments.html'">← Back</button>
       </div>
 
-      <!-- Success state (shown after payment completes) -->
-      <div id="successState" style="display:none" class="success-box">
-        <div class="success-icon">✅</div>
-        <div style="font-weight:800;font-size:1.3rem;color:var(--accent)">Payment Successful!</div>
-        <div style="color:var(--gray-700);font-size:.875rem;margin:.5rem 0 1.25rem" id="successAmt"></div>
-        <div style="font-size:.8rem;color:var(--gray-400);margin-bottom:1.25rem">The traveller will now pick up your parcel.</div>
-        <button class="btn btn-primary btn-block" onclick="location.href='shipments.html'">View My Shipments →</button>
-      </div>
-
-      <div class="secure-badge">
-        🔒 Secured by Cashfree Payments
-      </div>
     </div>
   </div>
 </div>
@@ -87,84 +136,95 @@
   const shipmentId = params.get('shipmentId');
   if (!shipmentId) { window.location.href = 'shipments.html'; }
 
-  let orderId = null;
+  // ── The merchant UPI ID to receive payments ──────────────────────────────
+  // Change this to your actual UPI ID (e.g. yourname@ybl / yourname@okaxis)
+  const MERCHANT_UPI_ID   = 'peerdrop@ybl';
+  const MERCHANT_NAME     = 'PeerDrop';
 
-  async function initPayment() {
+  let amountRs  = 0;
+  let orderId   = null;
+  let upiString = '';
+
+  async function init() {
     try {
-      // 1. Load shipment details
       const shipment = await api.getShipment(shipmentId);
-      const amtRs    = (shipment.totalAmount / 100).toFixed(2);
+      amountRs = (shipment.totalAmount / 100).toFixed(2);
 
-      document.getElementById('payAmount').textContent   = `₹${amtRs}`;
-      document.getElementById('payDesc').textContent     = `${shipment.from} → ${shipment.to}`;
-      document.getElementById('infoRoute').textContent   = `${shipment.from} → ${shipment.to}`;
-      document.getElementById('infoParcel').textContent  = shipment.parcelDescription;
+      document.getElementById('payAmount').textContent    = `₹${amountRs}`;
+      document.getElementById('payDesc').textContent      = `${shipment.from} → ${shipment.to}`;
+      document.getElementById('infoRoute').textContent    = `${shipment.from} → ${shipment.to}`;
+      document.getElementById('infoParcel').textContent   = shipment.parcelDescription;
       document.getElementById('infoTraveller').textContent = shipment.travellerName;
-      document.getElementById('infoPickup').textContent  = shipment.pickupSpot;
       document.getElementById('shipmentInfo').style.display = 'flex';
 
-      // 2. Create Cashfree order from backend
+      // Create order in backend to get orderId
       const order = await api.createOrder(shipmentId);
       orderId = order.orderId;
 
+      // Build UPI string
+      const txnNote = `PeerDrop-${shipmentId.slice(-6)}`;
+      upiString = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
+
+      // Show UPI ID
+      document.getElementById('upiIdDisplay').textContent = MERCHANT_UPI_ID;
+
+      // Build UPI app deep links
+      const apps = [
+        { name:'Google Pay',  icon:'🟢', scheme: `gpay://upi/pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
+        { name:'PhonePe',     icon:'🟣', scheme: `phonepe://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
+        { name:'Paytm',       icon:'🔵', scheme: `paytmmp://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
+        { name:'BHIM',        icon:'🇮🇳', scheme: upiString },
+        { name:'Amazon Pay',  icon:'🟠', scheme: upiString },
+        { name:'Any UPI App', icon:'💸', scheme: upiString },
+      ];
+
+      document.getElementById('upiGrid').innerHTML = apps.map(a =>
+        `<a class="upi-btn" href="${a.scheme}">
+          <div class="upi-icon">${a.icon}</div>
+          <div class="upi-name">${a.name}</div>
+        </a>`
+      ).join('');
+
+      // Generate QR code via Google Charts API (no dependency needed)
+      const qrData  = encodeURIComponent(upiString);
+      document.getElementById('qrImg').src =
+        `https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${qrData}&choe=UTF-8`;
+
       document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('paymentUI').style.display    = 'block';
 
-      // 3a. Mock mode — no real Cashfree credentials
-      if (order.mock) {
-        document.getElementById('cashfreeContainer').innerHTML = `
-          <div style="background:#fff3cd;border:2px solid #ffc107;border-radius:10px;padding:1rem;text-align:center;margin-bottom:1rem">
-            <div style="font-weight:700;color:#856404;margin-bottom:.5rem">🧪 Test / Demo Mode</div>
-            <div style="font-size:.82rem;color:#856404;margin-bottom:1rem">Cashfree credentials not configured.<br>Click below to simulate a successful UPI payment.</div>
-            <button class="btn btn-accent btn-block" onclick="mockPay()">📱 Simulate UPI Payment ₹${amtRs}</button>
-          </div>`;
-        return;
-      }
-
-      // 3b. Real Cashfree Checkout
-      const cashfree = Cashfree({ mode: (window.CASHFREE_ENV === 'production') ? 'production' : 'sandbox' });
-      const checkoutOptions = {
-        paymentSessionId: order.paymentSessionId,
-        returnUrl: `${location.origin}/app/payment-callback.html?shipmentId=${shipmentId}&orderId=${orderId}`,
-        style: { backgroundColor: '#ffffff', color: '#074061', fontFamily: 'Poppins', fontSize: '14px', errorColor: '#e53935', theme: 'light' },
-      };
-
-      cashfree.checkout(checkoutOptions).then(result => {
-        if (result.error)   showError(result.error.message);
-        if (result.redirect) { /* redirect handled by returnUrl */ }
-      });
-
-    } catch (err) {
+    } catch(err) {
       document.getElementById('loadingState').style.display = 'none';
-      showError(err.message);
+      document.getElementById('errorMsg').textContent = err.message || 'Failed to load payment';
+      document.getElementById('errorState').style.display = 'block';
     }
   }
 
-  window.mockPay = async function() {
+  window.confirmPayment = async function() {
+    const btn = document.getElementById('iHavePaidBtn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying…';
+
     try {
-      document.getElementById('cashfreeContainer').innerHTML =
-        '<div class="loader" style="margin:1rem 0"><div class="spinner"></div><p style="text-align:center;font-size:.85rem;color:var(--gray-400);margin-top:.5rem">Processing…</p></div>';
+      // Mark as paid — uses mock verification since no Cashfree webhook
       await api.verifyPayment({ orderId, shipmentId });
-      showSuccess();
+      document.getElementById('paymentUI').style.display  = 'none';
+      document.getElementById('successState').style.display = 'block';
     } catch(err) {
-      showError(err.message);
+      btn.disabled = false;
+      btn.innerHTML = '✅ I Have Paid';
+      showToast(err.message || 'Could not confirm payment. Try again.', 'error');
     }
   };
 
-  function showSuccess() {
-    const amtEl = document.getElementById('payAmount').textContent;
-    document.getElementById('cashfreeContainer').style.display = 'none';
-    document.getElementById('shipmentInfo').style.display      = 'none';
-    document.getElementById('successAmt').textContent          = `${amtEl} paid securely`;
-    document.getElementById('successState').style.display      = 'block';
+  function showToast(msg, type='info') {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`; t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 4000);
   }
 
-  function showError(msg) {
-    document.getElementById('cashfreeContainer').style.display = 'none';
-    document.getElementById('errorMsg').textContent = msg || 'Payment failed. Please try again.';
-    document.getElementById('errorState').style.display = 'block';
-  }
-
-  initPayment();
+  init();
 </script>
 </body>
 </html>
