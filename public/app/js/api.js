@@ -35,7 +35,7 @@ export const api = {
   updateStatus:     (id, status) => apiCall('PATCH', `/shipments/${id}/status`,  { status }),
   confirmDelivery:  (id)   => apiCall('POST',  `/shipments/${id}/confirm-delivery`),
 
-  // Payments
+  // Payments (Cashfree)
   createOrder:    (shipmentId) => apiCall('POST', '/payments/create-order', { shipmentId }),
   verifyPayment:  (body)       => apiCall('POST', '/payments/verify', body),
   withdraw:       (amount)     => apiCall('POST', '/payments/withdraw', { amount }),

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PeerDrop – Payment Result</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+  <style>
+    body { background:#f0f4f8; }
+    .result-wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
+    .result-card { background:#fff; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,.13); width:100%; max-width:400px; padding:2.5rem 2rem; text-align:center; }
+    .result-icon { font-size:4rem; margin-bottom:1rem; }
+  </style>
+</head>
+<body>
+<div class="result-wrap">
+  <div class="result-card" id="resultCard">
+    <div class="result-icon">⏳</div>
+    <div style="font-weight:700;font-size:1.2rem;color:var(--primary)">Verifying payment…</div>
+    <div style="color:var(--gray-400);font-size:.85rem;margin-top:.5rem">Please wait</div>
+  </div>
+</div>
+
+<script type="module">
+  import { api, getUser, getToken } from './js/api.js';
+
+  const user = getUser();
+  if (!user || !getToken()) { window.location.href = 'login.html'; }
+
+  const params     = new URLSearchParams(location.search);
+  const shipmentId = params.get('shipmentId');
+  const orderId    = params.get('orderId');
+
+  async function verify() {
+    const card = document.getElementById('resultCard');
+    try {
+      await api.verifyPayment({ orderId, shipmentId });
+      card.innerHTML = `
+        <div class="result-icon">✅</div>
+        <div style="font-weight:800;font-size:1.3rem;color:var(--accent)">Payment Successful!</div>
+        <div style="color:var(--gray-700);font-size:.875rem;margin:.75rem 0 1.25rem">
+          Your payment was received. The traveller will pick up your parcel shortly.
+        </div>
+        <button class="btn btn-primary btn-block" onclick="location.href='shipments.html'">View My Shipments →</button>`;
+    } catch(err) {
+      card.innerHTML = `
+        <div class="result-icon">❌</div>
+        <div style="font-weight:800;font-size:1.2rem;color:var(--danger)">Payment Failed</div>
+        <div style="color:var(--gray-700);font-size:.875rem;margin:.75rem 0 1.25rem">${err.message}</div>
+        <button class="btn btn-primary btn-block" onclick="history.back()">Try Again</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:.5rem" onclick="location.href='shipments.html'">Back to Shipments</button>`;
+    }
+  }
+
+  verify();
+</script>
+</body>
+</html>
