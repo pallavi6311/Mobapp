@@ -393,10 +393,24 @@
       document.getElementById('sStatActive').textContent = shipments.filter(s => ['accepted','picked_up'].includes(s.status)).length;
       document.getElementById('sStatCompleted').textContent = shipments.filter(s => s.status === 'completed').length;
 
-      // Recent shipments
+      // Show payment alert if any accepted + unpaid
+      const unpaid = shipments.filter(s => s.status === 'accepted' && s.paymentStatus === 'unpaid');
+      if (unpaid.length) {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'background:#fff3cd;border:2px solid #ffc107;border-radius:12px;padding:1rem 1.25rem;margin-bottom:1.25rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.75rem';
+        banner.innerHTML = `
+          <div>
+            <div style="font-weight:700;color:#856404">⚠️ Payment Required</div>
+            <div style="font-size:.85rem;color:#856404">${unpaid.length} shipment${unpaid.length>1?'s':''} accepted — pay to confirm your delivery</div>
+          </div>
+          <a href="shipments.html" class="btn btn-sm" style="background:#ffc107;color:#000;font-weight:700">Pay Now →</a>`;
+        document.getElementById('sRecentShipments').parentElement.before(banner);
+      }
+
+      // Recent shipments — with Pay Now button if accepted + unpaid
       const sEl = document.getElementById('sRecentShipments');
-      sEl.innerHTML = shipments.length ? shipments.slice(0,4).map(s => `
-        <div class="shipment-item">
+      sEl.innerHTML = shipments.length ? shipments.slice(0,5).map(s => `
+        <div class="shipment-item" style="padding:.75rem 0;border-bottom:1px solid var(--gray-200)">
           <div class="shipment-header">
             <span class="shipment-route">${s.from} → ${s.to}</span>
             <div>
@@ -405,6 +419,17 @@
             </div>
           </div>
           <div class="text-muted text-sm">📦 ${s.parcelDescription} · ${formatAmount(s.totalAmount)} · ${timeAgo(s.createdAt)}</div>
+          ${s.status === 'accepted' && s.paymentStatus === 'unpaid' ? `
+          <div style="margin-top:.6rem">
+            <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-sm">
+              💳 Pay Now ${formatAmount(s.totalAmount)}
+            </a>
+            <span style="font-size:.75rem;color:var(--warn);margin-left:.5rem">⚠️ Action required</span>
+          </div>` : ''}
+          ${s.status === 'delivered' && s.paymentStatus === 'paid' ? `
+          <div style="margin-top:.6rem">
+            <a href="shipments.html" class="btn btn-primary btn-sm">✅ Confirm Delivery</a>
+          </div>` : ''}
         </div>`).join('') :
         '<div class="empty-state"><div class="empty-icon">📭</div><p>No shipments yet. Find a traveller to get started!</p></div>';
 
