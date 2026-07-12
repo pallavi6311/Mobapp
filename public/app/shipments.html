@@ -8,8 +8,6 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"/>
   <link rel="stylesheet" href="styles/app.css"/>
-  <!-- Razorpay Checkout -->
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
 
@@ -30,14 +28,13 @@
 <div class="page-wrap">
   <h2 style="margin-bottom:1.25rem" id="pageTitle">Shipments</h2>
 
-  <!-- Status filter tabs -->
   <div class="tabs" id="statusTabs">
-    <button class="tab-btn active" onclick="filterStatus('all')">All</button>
-    <button class="tab-btn" onclick="filterStatus('pending')">Pending</button>
-    <button class="tab-btn" onclick="filterStatus('accepted')">Accepted</button>
-    <button class="tab-btn" onclick="filterStatus('picked_up')">Picked Up</button>
-    <button class="tab-btn" onclick="filterStatus('delivered')">Delivered</button>
-    <button class="tab-btn" onclick="filterStatus('completed')">Completed</button>
+    <button class="tab-btn active" onclick="filterStatus('all',event)">All</button>
+    <button class="tab-btn" onclick="filterStatus('pending',event)">Pending</button>
+    <button class="tab-btn" onclick="filterStatus('accepted',event)">Accepted</button>
+    <button class="tab-btn" onclick="filterStatus('picked_up',event)">Picked Up</button>
+    <button class="tab-btn" onclick="filterStatus('delivered',event)">Delivered</button>
+    <button class="tab-btn" onclick="filterStatus('completed',event)">Completed</button>
   </div>
 
   <div id="shipmentsContainer">
@@ -50,10 +47,7 @@
   <div class="modal-box" style="max-width:580px">
     <button class="modal-close" onclick="closeModal('detailModal')">&times;</button>
     <div class="modal-title" id="detailTitle">Shipment Detail</div>
-
-    <!-- Progress steps -->
     <div class="steps-track" id="progressTrack" style="margin-bottom:1rem"></div>
-
     <div id="detailBody" style="font-size:.875rem;color:var(--gray-700);display:flex;flex-direction:column;gap:.5rem"></div>
     <div id="detailActions" style="margin-top:1.25rem;display:flex;gap:.6rem;flex-wrap:wrap"></div>
   </div>
@@ -62,22 +56,24 @@
 <div id="toast-container"></div>
 
 <script>
-  let allShipments = [];
-  let currentFilter = 'all';
-  let currentShipment = null;
+  // Global state
+  window.allShipments   = [];
+  window.currentFilter  = 'all';
+  window.currentShipment = null;
+  window.currentUser    = null;
 
-  function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-  function openModal(id)  { document.getElementById(id).classList.add('open'); }
-  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function logout()           { localStorage.clear(); window.location.href = 'login.html'; }
+  function openModal(id)      { document.getElementById(id).classList.add('open'); }
+  function closeModal(id)     { document.getElementById(id).classList.remove('open'); }
 
-  function filterStatus(s) {
-    currentFilter = s;
+  function filterStatus(s, e) {
+    window.currentFilter = s;
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+    if (e && e.target) e.target.classList.add('active');
     renderShipments();
   }
 
-  const STEPS = ['pending','accepted','picked_up','delivered','completed'];
+  const STEPS       = ['pending','accepted','picked_up','delivered','completed'];
   const STEP_LABELS = ['Requested','Accepted','Picked Up','Delivered','Completed'];
 
   function stepIdx(status) { return STEPS.indexOf(status); }
@@ -87,20 +83,75 @@
     return STEPS.map((s, i) => {
       const isDone   = i < idx;
       const isActive = i === idx;
-      const lineClass = i < STEPS.length - 1 ? (i < idx ? 'step-line done' : 'step-line') : '';
       return `
         <div class="step">
-          <div class="step-dot ${isDone?'done':''} ${isActive&&!isDone?'active':''}">
+          <div class="step-dot ${isDone?'done':''} ${isActive?'active':''}">
             ${isDone ? '✓' : i+1}
           </div>
           <div class="step-label ${isActive?'active':''}">${STEP_LABELS[i]}</div>
         </div>
-        ${i < STEPS.length-1 ? `<div class="${lineClass}"></div>` : ''}`;
+        ${i < STEPS.length-1 ? `<div class="step-line ${isDone?'done':''}"></div>` : ''}`;
     }).join('');
   }
 
   function formatAmt(p) { return `₹${(p/100).toFixed(2)}`; }
-  function travelIcon(m) { return {flight:'✈️',train:'🚆',bus:'🚌',car:'🚗',bike:'🏍️'}[m]||'🚀'; }
+  function travelIcon(m){ return {flight:'✈️',train:'🚆',bus:'🚌',car:'🚗',bike:'🏍️'}[m]||'🚀'; }
+
+  function showToast(msg, type='info') {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`; t.textContent = msg;
+    document.getElementById('toast-container').appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+  }
+
+  window.renderShipments = function() {
+    const user = window.currentUser;
+    const list = window.currentFilter === 'all'
+      ? window.allShipments
+      : window.allShipments.filter(s => s.status === window.currentFilter);
+
+    const el = document.getElementById('shipmentsContainer');
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <p>${user && user.role==='traveller' ? 'No incoming requests yet' : 'No shipments here'}</p>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = list.map(s => `
+      <div class="shipment-item" onclick="openDetail('${s.id}')" style="cursor:pointer">
+        <div class="shipment-header">
+          <div>
+            <div class="shipment-route">${s.from} → ${s.to}</div>
+            <div class="text-muted text-sm">${travelIcon(s.meansOfTravel)} ${s.meansOfTravel} · 📅 ${s.departureDate || ''}</div>
+          </div>
+          <div style="text-align:right">
+            <span class="badge badge-${s.status}">${s.status.replace(/_/g,' ')}</span>
+            ${s.paymentStatus ? `<br><span class="badge badge-${s.paymentStatus}" style="margin-top:3px">${s.paymentStatus}</span>` : ''}
+          </div>
+        </div>
+        <div class="shipment-details">
+          <span>📦 ${s.parcelDescription}</span>
+          <span>⚖️ ${s.weightKg} kg</span>
+          <span>💰 ${formatAmt(s.totalAmount)}</span>
+          ${user && user.role==='traveller'
+            ? `<span>👤 ${s.senderName||'—'}</span>`
+            : `<span>✈️ ${s.travellerName||'—'}</span>`}
+        </div>
+        ${s.status==='accepted' && s.paymentStatus==='unpaid' && user && user.role==='sender'
+          ? `<div style="margin-top:.5rem">
+               <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-sm" onclick="event.stopPropagation()">
+                 💳 Pay Now ${formatAmt(s.totalAmount)}
+               </a>
+             </div>` : ''}
+        ${s.status==='pending' && user && user.role==='traveller'
+          ? `<div style="margin-top:.5rem;display:flex;gap:.5rem">
+               <button class="btn btn-accent btn-sm" onclick="event.stopPropagation();quickAccept('${s.id}')">✅ Accept</button>
+               <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();quickReject('${s.id}')">❌ Reject</button>
+             </div>` : ''}
+      </div>`).join('');
+  };
 </script>
 
 <script type="module">
@@ -109,63 +160,33 @@
   const user = getUser();
   if (!user || !getToken()) { window.location.href = 'login.html'; }
 
+  window.currentUser = user;
   document.getElementById('avatarInitial').textContent = (user.fullName||'U')[0].toUpperCase();
-  document.getElementById('pageTitle').textContent = user.role === 'traveller'
-    ? 'Incoming Shipment Requests' : 'My Shipments';
+  document.getElementById('pageTitle').textContent =
+    user.role === 'traveller' ? 'Incoming Shipment Requests' : 'My Shipments';
 
+  // ── Load shipments ────────────────────────────────────────────────────────
   async function loadShipments() {
-    document.getElementById('shipmentsContainer').innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+    document.getElementById('shipmentsContainer').innerHTML =
+      '<div class="loader"><div class="spinner"></div></div>';
     try {
       const data = await api.getMyShipments();
       window.allShipments = data;
       renderShipments();
     } catch (err) {
-      document.getElementById('shipmentsContainer').innerHTML =
-        `<div class="empty-state">
+      document.getElementById('shipmentsContainer').innerHTML = `
+        <div class="empty-state">
           <div class="empty-icon">⚠️</div>
-          <p style="color:var(--danger)">${err.message}</p>
-          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="loadShipments()">Retry</button>
+          <p style="color:var(--danger);font-size:.85rem">${err.message}</p>
+          <button class="btn btn-ghost btn-sm" style="margin-top:.5rem"
+            onclick="window.loadShipments()">🔄 Retry</button>
         </div>`;
     }
   }
-  // expose so retry button works
   window.loadShipments = loadShipments;
 
-  window.renderShipments = function() {
-    const list = window.currentFilter === 'all'
-      ? window.allShipments
-      : window.allShipments.filter(s => s.status === window.currentFilter);
-
-    const el = document.getElementById('shipmentsContainer');
-    if (!list.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No shipments here</p></div>';
-      return;
-    }
-
-    el.innerHTML = list.map(s => `
-      <div class="shipment-item" onclick="openDetail('${s.id}')">
-        <div class="shipment-header">
-          <div>
-            <div class="shipment-route">${s.from} → ${s.to}</div>
-            <div class="text-muted text-sm">${travelIcon(s.meansOfTravel)} ${s.meansOfTravel} · 📅 ${s.departureDate}</div>
-          </div>
-          <div style="text-align:right">
-            <span class="badge badge-${s.status}">${s.status.replace('_',' ')}</span>
-            ${s.paymentStatus ? `<br><span class="badge badge-${s.paymentStatus}" style="margin-top:3px">${s.paymentStatus}</span>` : ''}
-          </div>
-        </div>
-        <div class="shipment-details">
-          <span>📦 ${s.parcelDescription}</span>
-          <span>⚖️ ${s.weightKg} kg</span>
-          <span>💰 ${formatAmt(s.totalAmount)}</span>
-          ${user.role === 'traveller' ? `<span>👤 ${s.senderName}</span>` : `<span>✈️ ${s.travellerName}</span>`}
-          <span>🕐 ${timeAgo(s.createdAt)}</span>
-        </div>
-        <div class="text-muted text-sm" style="margin-top:.2rem">📍 Pickup: ${s.pickupSpot}</div>
-      </div>`).join('');
-  };
-
-  window.openDetail = async function(id) {
+  // ── Open detail modal ─────────────────────────────────────────────────────
+  window.openDetail = function(id) {
     const s = window.allShipments.find(x => x.id === id);
     if (!s) return;
     window.currentShipment = s;
@@ -180,12 +201,13 @@
       <div><strong>Pickup Spot:</strong> ${s.pickupSpot}</div>
       <div><strong>Delivery Address:</strong> ${s.deliveryAddress}</div>
       ${s.receiverPhone ? `<div><strong>Receiver Phone:</strong> ${s.receiverPhone}</div>` : ''}
-      ${user.role === 'traveller' ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone}</div>` : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone}</div>`}
+      ${user.role==='traveller'
+        ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone||'—'}</div>`
+        : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone||'—'}</div>`}
       <div><strong>Payment:</strong> <span class="badge badge-${s.paymentStatus}">${s.paymentStatus}</span></div>
-      <div><strong>Created:</strong> ${new Date(s.createdAt).toLocaleString()}</div>
-    `;
+      <div><strong>Created:</strong> ${new Date(s.createdAt).toLocaleString()}</div>`;
 
-    // Build action buttons based on role + status
+    // Action buttons
     const actEl = document.getElementById('detailActions');
     actEl.innerHTML = '';
 
@@ -199,27 +221,53 @@
       } else if (s.status === 'picked_up') {
         actEl.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('delivered')">🏠 Mark as Delivered</button>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
-        actEl.innerHTML = `<div class="text-warn text-sm">⏳ Waiting for sender to complete payment</div>`;
+        actEl.innerHTML = `<div style="color:var(--warn);font-size:.85rem;font-weight:600">⏳ Waiting for sender to complete payment</div>`;
       }
-    } else { // sender
+    } else {
+      // Sender
       if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
-        actEl.innerHTML = `<button class="btn btn-accent btn-lg" onclick="initiatePayment()">💳 Pay ${formatAmt(s.totalAmount)}</button>`;
+        actEl.innerHTML = `
+          <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-lg">
+            💳 Pay ${formatAmt(s.totalAmount)} via UPI
+          </a>`;
       } else if (s.status === 'delivered' && s.paymentStatus === 'paid') {
         actEl.innerHTML = `<button class="btn btn-primary" onclick="confirmDelivery()">✅ Confirm Delivery Received</button>`;
+      } else if (s.status === 'pending') {
+        actEl.innerHTML = `<div style="color:var(--gray-400);font-size:.85rem">⏳ Waiting for traveller to accept</div>`;
       }
     }
 
     openModal('detailModal');
   };
 
+  // ── Quick accept/reject from list ─────────────────────────────────────────
+  window.quickAccept = async function(id) {
+    try {
+      await api.respondShipment(id, 'accept');
+      showToast('Request accepted!', 'success');
+      loadShipments();
+    } catch(err) { showToast(err.message, 'error'); }
+  };
+
+  window.quickReject = async function(id) {
+    if (!confirm('Reject this request?')) return;
+    try {
+      await api.respondShipment(id, 'reject');
+      showToast('Request rejected', 'info');
+      loadShipments();
+    } catch(err) { showToast(err.message, 'error'); }
+  };
+
+  // ── Modal actions ─────────────────────────────────────────────────────────
   window.respond = async function(action) {
     const s = window.currentShipment;
     try {
       await api.respondShipment(s.id, action);
       closeModal('detailModal');
-      showToast(`Shipment ${action === 'accept' ? 'accepted' : 'rejected'}`, action === 'accept' ? 'success' : 'info');
+      showToast(`Shipment ${action==='accept'?'accepted':'rejected'}`,
+                action==='accept'?'success':'info');
       loadShipments();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch(err) { showToast(err.message, 'error'); }
   };
 
   window.updateStatus = async function(status) {
@@ -227,9 +275,9 @@
     try {
       await api.updateStatus(s.id, status);
       closeModal('detailModal');
-      showToast(`Status updated to ${status.replace('_',' ')}`, 'success');
+      showToast(`Marked as ${status.replace(/_/g,' ')}`, 'success');
       loadShipments();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch(err) { showToast(err.message, 'error'); }
   };
 
   window.confirmDelivery = async function() {
@@ -237,29 +285,17 @@
     try {
       await api.confirmDelivery(s.id);
       closeModal('detailModal');
-      showToast('Delivery confirmed! Traveller wallet credited.', 'success');
+      showToast('Delivery confirmed! Traveller wallet credited. ✅', 'success');
       loadShipments();
-    } catch (err) { showToast(err.message, 'error'); }
+    } catch(err) { showToast(err.message, 'error'); }
   };
 
-  window.initiatePayment = async function() {
-    const s = window.currentShipment;
-    // Redirect to our payment page
-    window.location.href = `payment.html?shipmentId=${s.id}`;
-  };
-
-  function showToast(msg, type='info') {
-    const t = document.createElement('div');
-    t.className = `toast toast-${type}`; t.textContent = msg;
-    document.getElementById('toast-container').appendChild(t);
-    setTimeout(() => t.remove(), 4000);
-  }
-
+  // ── Init ──────────────────────────────────────────────────────────────────
   loadShipments();
 
-  // Show success if returning from payment page
+  // Show success toast if returning from payment
   if (new URLSearchParams(location.search).get('paid')) {
-    setTimeout(() => showToast('Payment successful! Traveller will now pick up your parcel.', 'success'), 500);
+    setTimeout(() => showToast('Payment received! Traveller will pick up your parcel. 🎉', 'success'), 500);
   }
 </script>
 </body>
