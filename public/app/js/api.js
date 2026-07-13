@@ -47,11 +47,14 @@ export const api = {
   getShipment:      (id)   => apiCall('GET',   `/shipments/${id}`),
   respondShipment:  (id, action) => apiCall('PATCH', `/shipments/${id}/respond`, { action }),
   updateStatus:     (id, status) => apiCall('PATCH', `/shipments/${id}/status`,  { status }),
+  markPickup:       (id)   => apiCall('PATCH', `/shipments/${id}/mark-pickup`),
+  uploadDeliveryPhoto: (id, photoBase64, mimeType) =>
+    apiCall('POST', `/shipments/${id}/upload-delivery-photo`, { photoBase64, mimeType }),
   confirmDelivery:  (id)   => apiCall('POST',  `/shipments/${id}/confirm-delivery`),
 
-  // Payments (Cashfree)
+  // Payments (Mock — swap in real gateway keys later)
   createOrder:    (shipmentId) => apiCall('POST', '/payments/create-order', { shipmentId }),
-  verifyPayment:  (body)       => apiCall('POST', '/payments/verify', body),
+  simulatePay:    (body)       => apiCall('POST', '/payments/simulate-pay', body),
   withdraw:       (amount)     => apiCall('POST', '/payments/withdraw', { amount }),
   getWallet:      ()           => apiCall('GET',  '/payments/wallet'),
 };

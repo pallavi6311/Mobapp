@@ -26,6 +26,9 @@ app.use('/api/trips', tripsRouter);
 app.use('/api/shipments', shipmentsRouter);
 app.use('/api/payments', paymentsRouter);
 
+// Razorpay webhook needs raw body for signature verification
+// (express.json() is already applied above, which is fine for our HMAC approach)
+
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', app: 'LoadLink' }));
 

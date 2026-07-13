@@ -205,6 +205,14 @@
         ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone||'—'}</div>`
         : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone||'—'}</div>`}
       <div><strong>Payment:</strong> <span class="badge badge-${s.paymentStatus}">${s.paymentStatus}</span></div>
+      ${s.escrowStatus ? `<div><strong>Escrow:</strong> <span style="color:var(--accent);font-weight:600">${s.escrowStatus}</span></div>` : ''}
+      ${s.deliveryPhotoURL && !s.deliveryPhotoURL.startsWith('storage-unavailable')
+        ? `<div><strong>Delivery Photo:</strong></div>
+           <img src="${s.deliveryPhotoURL}" alt="Delivery proof"
+             style="max-width:100%;border-radius:8px;border:2px solid var(--accent);margin-top:.25rem"/>`
+        : s.deliveryPhotoURL
+          ? `<div><strong>Delivery Photo:</strong> <span style="color:var(--gray-400)">received (preview unavailable)</span></div>`
+          : ''}
       <div><strong>Created:</strong> ${new Date(s.createdAt).toLocaleString()}</div>`;
 
     // Action buttons
@@ -217,9 +225,22 @@
           <button class="btn btn-accent" onclick="respond('accept')">✅ Accept</button>
           <button class="btn btn-danger" onclick="respond('reject')">❌ Reject</button>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'paid') {
-        actEl.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('picked_up')">📦 Mark as Picked Up</button>`;
+        actEl.innerHTML = `<button class="btn btn-primary" onclick="markPickup()">📦 Mark as Picked Up</button>`;
       } else if (s.status === 'picked_up') {
-        actEl.innerHTML = `<button class="btn btn-primary" onclick="updateStatus('delivered')">🏠 Mark as Delivered</button>`;
+        actEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:.75rem;width:100%">
+            <div style="font-size:.85rem;color:var(--gray-700);font-weight:600">
+              📸 Take a photo of the parcel at the <strong>destination</strong> as delivery proof
+            </div>
+            <input type="file" id="deliveryPhotoInput" accept="image/*" capture="environment"
+              style="font-size:.8rem;color:var(--gray-700)"/>
+            <button class="btn btn-accent" id="uploadPhotoBtn" onclick="uploadDeliveryPhoto()">
+              📸 Upload Delivery Photo &amp; Mark Delivered
+            </button>
+            <div id="photoUploadProgress" style="display:none;font-size:.8rem;color:var(--gray-400)">
+              Uploading photo…
+            </div>
+          </div>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
         actEl.innerHTML = `<div style="color:var(--warn);font-size:.85rem;font-weight:600">⏳ Waiting for sender to complete payment</div>`;
       }
@@ -231,7 +252,18 @@
             💳 Pay ${formatAmt(s.totalAmount)} via UPI
           </a>`;
       } else if (s.status === 'delivered' && s.paymentStatus === 'paid') {
-        actEl.innerHTML = `<button class="btn btn-primary" onclick="confirmDelivery()">✅ Confirm Delivery Received</button>`;
+        // Show delivery photo if available
+        const photoHtml = s.deliveryPhotoURL && !s.deliveryPhotoURL.startsWith('storage-unavailable')
+          ? `<div style="margin-bottom:.75rem">
+               <div style="font-size:.8rem;font-weight:600;color:var(--gray-600);margin-bottom:.35rem">📸 Delivery Photo from Traveller:</div>
+               <img src="${s.deliveryPhotoURL}" alt="Delivery proof" style="max-width:100%;border-radius:8px;border:2px solid var(--accent)"/>
+             </div>`
+          : s.deliveryPhotoURL
+            ? `<div style="font-size:.8rem;color:var(--gray-400);margin-bottom:.5rem">📸 Delivery photo received (preview unavailable)</div>`
+            : '';
+        actEl.innerHTML = `
+          ${photoHtml}
+          <button class="btn btn-primary" onclick="confirmDelivery()">✅ Confirm Delivery Received</button>`;
       } else if (s.status === 'pending') {
         actEl.innerHTML = `<div style="color:var(--gray-400);font-size:.85rem">⏳ Waiting for traveller to accept</div>`;
       }
@@ -268,6 +300,57 @@
                 action==='accept'?'success':'info');
       loadShipments();
     } catch(err) { showToast(err.message, 'error'); }
+  };
+
+  // ── Mark Picked Up ────────────────────────────────────────────────────────
+  window.markPickup = async function() {
+    const s = window.currentShipment;
+    try {
+      await api.markPickup(s.id);
+      closeModal('detailModal');
+      showToast('Parcel marked as Picked Up! 📦 Upload a delivery photo when you arrive.', 'success');
+      loadShipments();
+    } catch(err) { showToast(err.message, 'error'); }
+  };
+
+  // ── Upload Delivery Photo ─────────────────────────────────────────────────
+  window.uploadDeliveryPhoto = async function() {
+    const s      = window.currentShipment;
+    const input  = document.getElementById('deliveryPhotoInput');
+    const btn    = document.getElementById('uploadPhotoBtn');
+    const prog   = document.getElementById('photoUploadProgress');
+
+    if (!input || !input.files || !input.files[0]) {
+      showToast('Please select a photo first', 'error'); return;
+    }
+
+    const file = input.files[0];
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('Photo must be under 10 MB', 'error'); return;
+    }
+
+    btn.disabled = true;
+    prog.style.display = '';
+    prog.textContent   = 'Uploading delivery photo…';
+
+    try {
+      // Convert file to base64
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload  = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      await api.uploadDeliveryPhoto(s.id, base64, file.type);
+      closeModal('detailModal');
+      showToast('Delivery photo uploaded! Waiting for sender to confirm. 📸', 'success');
+      loadShipments();
+    } catch(err) {
+      btn.disabled       = false;
+      prog.style.display = 'none';
+      showToast(err.message || 'Upload failed. Try again.', 'error');
+    }
   };
 
   window.updateStatus = async function(status) {

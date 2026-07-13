@@ -3,57 +3,76 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PeerDrop – Pay via UPI</title>
+  <title>PeerDrop – Secure Payment</title>
   <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
   <link rel="stylesheet" href="styles/app.css"/>
   <style>
-    body { background:#f0f4f8; }
-    .pay-wrap  { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:1.5rem; }
-    .pay-card  { background:#fff; border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,.13); width:100%; max-width:460px; overflow:hidden; }
-    .pay-header{ background:linear-gradient(135deg,#074061,#0d6898); color:#fff; padding:1.5rem; text-align:center; }
-    .pay-amount{ font-size:2.5rem; font-weight:800; }
-    .pay-desc  { font-size:.85rem; opacity:.8; margin-top:4px; }
-    .pay-body  { padding:1.5rem; }
+    body { background: #f0f4f8; }
 
-    .info-box  { background:var(--gray-100); border-radius:10px; padding:.85rem 1rem; font-size:.875rem; color:var(--gray-700); margin-bottom:1.25rem; display:flex; flex-direction:column; gap:.3rem; }
+    .pay-wrap  { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+    .pay-card  { background: #fff; border-radius: 20px; box-shadow: 0 12px 48px rgba(0,0,0,.13); width: 100%; max-width: 480px; overflow: hidden; }
 
-    /* UPI App buttons */
-    .upi-grid  { display:grid; grid-template-columns:repeat(3,1fr); gap:.75rem; margin-bottom:1.25rem; }
-    .upi-btn   { border:2px solid var(--gray-200); border-radius:12px; padding:.85rem .5rem; text-align:center; cursor:pointer; text-decoration:none; color:var(--gray-900); transition:.2s; display:block; }
-    .upi-btn:hover { border-color:var(--primary); background:#e8f4fd; transform:translateY(-2px); }
-    .upi-btn .upi-icon { font-size:2rem; margin-bottom:4px; }
-    .upi-btn .upi-name { font-size:.75rem; font-weight:700; color:var(--primary); }
+    .pay-header {
+      background: linear-gradient(135deg, #074061 0%, #0d6898 100%);
+      color: #fff; padding: 1.75rem 1.5rem; text-align: center;
+    }
+    .pay-badge  { font-size: .75rem; font-weight: 700; letter-spacing: 1px; opacity: .75; margin-bottom: .4rem; }
+    .pay-amount { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+    .pay-route  { font-size: .85rem; opacity: .8; margin-top: .35rem; }
 
-    /* QR code box */
-    .qr-box    { border:2px dashed var(--gray-300); border-radius:12px; padding:1.25rem; text-align:center; margin-bottom:1.25rem; }
-    .qr-img    { width:180px; height:180px; margin:0 auto .75rem; display:block; }
+    .pay-body  { padding: 1.5rem; }
 
-    /* After pay section */
-    .after-pay { background:#e8f5e9; border-radius:10px; padding:1rem; text-align:center; margin-bottom:1.25rem; }
+    .info-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: .6rem;
+      background: #f7fafc; border-radius: 12px; padding: 1rem;
+      font-size: .82rem; color: var(--gray-700); margin-bottom: 1.25rem;
+    }
+    .info-item span { display: block; font-size: .7rem; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 2px; }
 
-    .step-list  { display:flex; flex-direction:column; gap:.5rem; font-size:.85rem; color:var(--gray-700); margin-bottom:1.25rem; }
-    .step-item  { display:flex; align-items:flex-start; gap:.5rem; }
+    /* Method selector */
+    .method-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; margin-bottom: 1.25rem; }
+    .method-btn  {
+      border: 2px solid var(--gray-200); border-radius: 12px;
+      padding: .75rem .5rem; text-align: center; cursor: pointer;
+      transition: all .18s; background: #fff;
+    }
+    .method-btn:hover, .method-btn.selected {
+      border-color: var(--primary); background: #e8f4fd;
+    }
+    .method-btn.selected { box-shadow: 0 0 0 3px rgba(7,64,97,.12); }
+    .method-icon { font-size: 1.6rem; margin-bottom: 3px; }
+    .method-name { font-size: .72rem; font-weight: 700; color: var(--primary); }
+
+    /* UPI input */
+    .upi-input-wrap { margin-bottom: 1.25rem; display: none; }
+    .upi-input-wrap.show { display: block; }
+
+    .escrow-note {
+      background: #e8f5e9; border-radius: 10px; padding: .85rem 1rem;
+      font-size: .8rem; color: #2e7d32; margin-bottom: 1.25rem;
+      display: flex; gap: .5rem; align-items: flex-start;
+    }
+    .escrow-note .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+
+    .pay-footer { font-size: .73rem; color: var(--gray-400); text-align: center; margin-top: .75rem; }
+    .trust-row  { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; margin-bottom: 1.1rem; }
+    .trust-chip { background: var(--gray-100); border-radius: 20px; padding: 3px 9px; font-size: .72rem; color: var(--gray-500); }
   </style>
 </head>
 <body>
 
 <div class="pay-wrap">
   <div class="pay-card">
+
+    <!-- Header -->
     <div class="pay-header">
-      <div style="font-size:.8rem;opacity:.8;margin-bottom:4px">🔒 PeerDrop · UPI Payment</div>
+      <div class="pay-badge">🔒 PEERDROP · SECURE PAYMENT</div>
       <div class="pay-amount" id="payAmount">Loading…</div>
-      <div class="pay-desc"   id="payDesc">Shipment payment</div>
+      <div class="pay-route"  id="payRoute">—</div>
     </div>
 
     <div class="pay-body">
-
-      <!-- Shipment info -->
-      <div class="info-box" id="shipmentInfo" style="display:none">
-        <div><strong id="infoRoute">—</strong></div>
-        <div>📦 <span id="infoParcel">—</span></div>
-        <div>✈️ Traveller: <span id="infoTraveller">—</span></div>
-      </div>
 
       <!-- Loading -->
       <div id="loadingState" style="text-align:center;padding:2rem 0">
@@ -64,50 +83,114 @@
       <!-- Payment UI -->
       <div id="paymentUI" style="display:none">
 
-        <!-- How to pay steps -->
-        <div class="step-list">
-          <div class="step-item"><span>1️⃣</span><span>Tap any UPI app below to pay instantly</span></div>
-          <div class="step-item"><span>2️⃣</span><span>Complete payment in your UPI app</span></div>
-          <div class="step-item"><span>3️⃣</span><span>Come back and tap <strong>"I have paid"</strong></span></div>
+        <!-- Shipment info -->
+        <div class="info-grid" id="infoGrid"></div>
+
+        <!-- Trust badges -->
+        <div class="trust-row">
+          <span class="trust-chip">🔒 256-bit SSL</span>
+          <span class="trust-chip">🏦 Escrow Protected</span>
+          <span class="trust-chip">✅ Instant Confirm</span>
         </div>
 
-        <!-- UPI app deep links -->
-        <div class="upi-grid" id="upiGrid">
-          <!-- filled by JS -->
+        <!-- Payment method -->
+        <div style="font-size:.8rem;font-weight:700;color:var(--gray-600);margin-bottom:.6rem">
+          Select Payment Method
+        </div>
+        <div class="method-grid" id="methodGrid">
+          <div class="method-btn selected" onclick="selectMethod('upi',this)">
+            <div class="method-icon">📱</div>
+            <div class="method-name">UPI</div>
+          </div>
+          <div class="method-btn" onclick="selectMethod('card',this)">
+            <div class="method-icon">💳</div>
+            <div class="method-name">Card</div>
+          </div>
+          <div class="method-btn" onclick="selectMethod('netbanking',this)">
+            <div class="method-icon">🏦</div>
+            <div class="method-name">Net Banking</div>
+          </div>
+          <div class="method-btn" onclick="selectMethod('wallet',this)">
+            <div class="method-icon">👜</div>
+            <div class="method-name">Wallet</div>
+          </div>
         </div>
 
-        <!-- QR code for desktop / scanner -->
-        <div class="qr-box">
-          <div style="font-size:.8rem;font-weight:700;color:var(--gray-500);margin-bottom:.75rem">OR SCAN QR CODE</div>
-          <img id="qrImg" class="qr-img" alt="UPI QR Code"/>
-          <div style="font-size:.75rem;color:var(--gray-400)">Open any UPI app → Scan QR → Pay</div>
+        <!-- UPI ID field (shown for UPI) -->
+        <div class="upi-input-wrap show" id="upiInputWrap">
+          <label style="font-size:.8rem;font-weight:600;color:var(--gray-600)">UPI ID</label>
+          <input type="text" id="upiId" class="form-input" placeholder="yourname@upi"
+            value="" style="margin-top:.35rem"/>
         </div>
 
-        <!-- UPI ID manual option -->
-        <div style="text-align:center;margin-bottom:1.25rem;font-size:.82rem;color:var(--gray-500)">
-          Or pay to UPI ID: <strong id="upiIdDisplay" style="color:var(--primary)">—</strong>
+        <!-- Card fields (shown for card) -->
+        <div id="cardInputWrap" style="display:none;margin-bottom:1.25rem">
+          <div style="display:flex;flex-direction:column;gap:.6rem">
+            <div>
+              <label style="font-size:.8rem;font-weight:600;color:var(--gray-600)">Card Number</label>
+              <input type="text" class="form-input" placeholder="4111 1111 1111 1111" maxlength="19"
+                style="margin-top:.35rem" oninput="formatCard(this)"/>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+              <div>
+                <label style="font-size:.8rem;font-weight:600;color:var(--gray-600)">Expiry</label>
+                <input type="text" class="form-input" placeholder="MM/YY" maxlength="5" style="margin-top:.35rem"/>
+              </div>
+              <div>
+                <label style="font-size:.8rem;font-weight:600;color:var(--gray-600)">CVV</label>
+                <input type="password" class="form-input" placeholder="•••" maxlength="3" style="margin-top:.35rem"/>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:.8rem;font-weight:600;color:var(--gray-600)">Name on Card</label>
+              <input type="text" class="form-input" placeholder="Full name" style="margin-top:.35rem"/>
+            </div>
+          </div>
         </div>
 
-        <!-- I have paid button -->
-        <div class="after-pay">
-          <div style="font-size:.85rem;color:var(--accent);font-weight:700;margin-bottom:.6rem">✅ Paid? Tap below to confirm</div>
-          <button class="btn btn-accent btn-block btn-lg" id="iHavePaidBtn" onclick="confirmPayment()">
-            ✅ I Have Paid
-          </button>
-          <div style="font-size:.75rem;color:var(--gray-400);margin-top:.4rem">Your shipment will be activated after confirmation</div>
+        <!-- Net banking / wallet placeholder -->
+        <div id="otherInputWrap" style="display:none;margin-bottom:1.25rem">
+          <div style="background:var(--gray-100);border-radius:10px;padding:.85rem;font-size:.82rem;color:var(--gray-500);text-align:center">
+            You'll be redirected to complete payment securely.
+          </div>
         </div>
+
+        <!-- Escrow notice -->
+        <div class="escrow-note">
+          <span class="icon">🔐</span>
+          <span>Your payment is held in <strong>escrow</strong>. The traveller receives the money only after you confirm the parcel was delivered.</span>
+        </div>
+
+        <!-- Pay button -->
+        <button class="btn btn-accent btn-block btn-lg" id="payBtn" onclick="simulatePay()">
+          Pay ₹<span id="btnAmt">—</span> Securely
+        </button>
 
         <button class="btn btn-ghost btn-block btn-sm" onclick="location.href='shipments.html'" style="margin-top:.5rem">
           Cancel
         </button>
+
+        <div class="pay-footer">
+          This is a demo payment. No real money is charged.<br/>
+          Integrate Razorpay / Cashfree keys to go live.
+        </div>
+      </div>
+
+      <!-- Processing -->
+      <div id="processingState" style="display:none;text-align:center;padding:2rem 0">
+        <div class="spinner" style="margin:0 auto 1rem"></div>
+        <div style="font-weight:700;color:var(--primary);font-size:1rem">Processing payment…</div>
+        <div style="color:var(--gray-400);font-size:.8rem;margin-top:.4rem">Please do not close this window</div>
       </div>
 
       <!-- Success -->
-      <div id="successState" style="display:none;text-align:center;padding:1.5rem 0">
+      <div id="successState" style="display:none;text-align:center;padding:1.75rem 0">
         <div style="font-size:4rem;margin-bottom:.75rem">✅</div>
-        <div style="font-weight:800;font-size:1.3rem;color:var(--accent)">Payment Confirmed!</div>
-        <div style="color:var(--gray-700);font-size:.875rem;margin:.5rem 0 1.5rem">
-          The traveller has been notified and will pick up your parcel.
+        <div style="font-weight:800;font-size:1.35rem;color:#2e7d32">Payment Successful!</div>
+        <div style="color:var(--gray-700);font-size:.875rem;margin:.6rem 0 1.5rem;line-height:1.6">
+          ₹<span id="successAmt">—</span> is held securely in escrow.<br/>
+          The traveller has been notified to pick up your parcel.<br/>
+          <strong>Funds release only after you confirm delivery.</strong>
         </div>
         <button class="btn btn-primary btn-block" onclick="location.href='shipments.html'">
           View My Shipments →
@@ -117,7 +200,8 @@
       <!-- Error -->
       <div id="errorState" style="display:none">
         <div class="error-msg" id="errorMsg"></div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:.5rem" onclick="location.href='shipments.html'">← Back</button>
+        <button class="btn btn-accent btn-block" style="margin-top:.75rem" onclick="location.reload()">🔄 Try Again</button>
+        <button class="btn btn-ghost btn-sm btn-block" style="margin-top:.4rem" onclick="location.href='shipments.html'">← Back</button>
       </div>
 
     </div>
@@ -131,98 +215,88 @@
 
   const user = getUser();
   if (!user || !getToken()) { window.location.href = 'login.html'; }
+  if (user.role !== 'sender') { window.location.href = 'dashboard.html'; }
 
   const params     = new URLSearchParams(location.search);
   const shipmentId = params.get('shipmentId');
   if (!shipmentId) { window.location.href = 'shipments.html'; }
 
-  // ── The merchant UPI ID to receive payments ──────────────────────────────
-  // Change this to your actual UPI ID (e.g. yourname@ybl / yourname@okaxis)
-  const MERCHANT_UPI_ID   = 'pallavi972006@okhdfcbank';
-  const MERCHANT_NAME     = 'PeerDrop';
+  window.__orderId    = null;
+  window.__amountRs   = '0';
+  window.__shipmentId = shipmentId;
 
-  let amountRs  = 0;
-  let orderId   = null;
-  let upiString = '';
-
+  // ── Init ──────────────────────────────────────────────────────────────────
   async function init() {
     try {
       const shipment = await api.getShipment(shipmentId);
-      amountRs = (shipment.totalAmount / 100).toFixed(2);
+      if (shipment.paymentStatus === 'paid') { show('successState'); return; }
 
-      document.getElementById('payAmount').textContent    = `₹${amountRs}`;
-      document.getElementById('payDesc').textContent      = `${shipment.from} → ${shipment.to}`;
-      document.getElementById('infoRoute').textContent    = `${shipment.from} → ${shipment.to}`;
-      document.getElementById('infoParcel').textContent   = shipment.parcelDescription;
-      document.getElementById('infoTraveller').textContent = shipment.travellerName;
-      document.getElementById('shipmentInfo').style.display = 'flex';
+      const amtRs = (shipment.totalAmount / 100).toFixed(2);
+      window.__amountRs = amtRs;
 
-      // Create order in backend to get orderId
+      document.getElementById('payAmount').textContent = `₹${amtRs}`;
+      document.getElementById('payRoute').textContent  = `${shipment.from} → ${shipment.to}`;
+      document.getElementById('btnAmt').textContent    = amtRs;
+      document.getElementById('successAmt').textContent = amtRs;
+
+      document.getElementById('infoGrid').innerHTML = `
+        <div class="info-item"><span>Parcel</span>${shipment.parcelDescription}</div>
+        <div class="info-item"><span>Weight</span>${shipment.weightKg} kg</div>
+        <div class="info-item"><span>Traveller</span>${shipment.travellerName || '—'}</div>
+        <div class="info-item"><span>Departure</span>${shipment.departureDate || '—'}</div>
+      `;
+
+      // Create mock order
       const order = await api.createOrder(shipmentId);
-      orderId = order.orderId;
+      window.__orderId = order.orderId;
 
-      // Build UPI string
-      const txnNote = `PeerDrop-${shipmentId.slice(-6)}`;
-      upiString = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}`;
-
-      // Show UPI ID
-      document.getElementById('upiIdDisplay').textContent = MERCHANT_UPI_ID;
-
-      // Build UPI app deep links
-      const apps = [
-        { name:'Google Pay',  icon:'🟢', scheme: `gpay://upi/pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
-        { name:'PhonePe',     icon:'🟣', scheme: `phonepe://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
-        { name:'Paytm',       icon:'🔵', scheme: `paytmmp://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent(MERCHANT_NAME)}&am=${amountRs}&cu=INR&tn=${encodeURIComponent(txnNote)}` },
-        { name:'BHIM',        icon:'🇮🇳', scheme: upiString },
-        { name:'Amazon Pay',  icon:'🟠', scheme: upiString },
-        { name:'Any UPI App', icon:'💸', scheme: upiString },
-      ];
-
-      document.getElementById('upiGrid').innerHTML = apps.map(a =>
-        `<a class="upi-btn" href="${a.scheme}">
-          <div class="upi-icon">${a.icon}</div>
-          <div class="upi-name">${a.name}</div>
-        </a>`
-      ).join('');
-
-      // Generate QR code via Google Charts API (no dependency needed)
-      const qrData  = encodeURIComponent(upiString);
-      document.getElementById('qrImg').src =
-        `https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${qrData}&choe=UTF-8`;
-
-      document.getElementById('loadingState').style.display = 'none';
-      document.getElementById('paymentUI').style.display    = 'block';
-
-    } catch(err) {
-      document.getElementById('loadingState').style.display = 'none';
-      document.getElementById('errorMsg').textContent = err.message || 'Failed to load payment';
-      document.getElementById('errorState').style.display = 'block';
+      show('paymentUI');
+    } catch (err) {
+      document.getElementById('errorMsg').textContent = err.message || 'Failed to load';
+      show('errorState');
     }
   }
 
-  window.confirmPayment = async function() {
-    const btn = document.getElementById('iHavePaidBtn');
+  // ── Select payment method ─────────────────────────────────────────────────
+  window.selectMethod = function(method, el) {
+    document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('upiInputWrap').classList.toggle('show',  method === 'upi');
+    document.getElementById('cardInputWrap').style.display   = method === 'card' ? '' : 'none';
+    document.getElementById('otherInputWrap').style.display  = ['netbanking','wallet'].includes(method) ? '' : 'none';
+  };
+
+  // ── Format card number ────────────────────────────────────────────────────
+  window.formatCard = function(input) {
+    let v = input.value.replace(/\D/g, '').substring(0, 16);
+    input.value = v.replace(/(.{4})/g, '$1 ').trim();
+  };
+
+  // ── Simulate payment ──────────────────────────────────────────────────────
+  window.simulatePay = async function() {
+    const btn = document.getElementById('payBtn');
     btn.disabled = true;
-    btn.textContent = 'Verifying…';
+    btn.textContent = 'Processing…';
+
+    // Brief artificial delay so it feels like a real payment
+    show('processingState');
+    await sleep(1800);
 
     try {
-      // Mark as paid — uses mock verification since no Cashfree webhook
-      await api.verifyPayment({ orderId, shipmentId });
-      document.getElementById('paymentUI').style.display  = 'none';
-      document.getElementById('successState').style.display = 'block';
-    } catch(err) {
-      btn.disabled = false;
-      btn.innerHTML = '✅ I Have Paid';
-      showToast(err.message || 'Could not confirm payment. Try again.', 'error');
+      await api.simulatePay({ orderId: window.__orderId, shipmentId });
+      show('successState');
+    } catch (err) {
+      document.getElementById('errorMsg').textContent = err.message || 'Payment failed. Try again.';
+      show('errorState');
     }
   };
 
-  function showToast(msg, type='info') {
-    const t = document.createElement('div');
-    t.className = `toast toast-${type}`; t.textContent = msg;
-    document.getElementById('toast-container').appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+  function show(id) {
+    ['loadingState','paymentUI','processingState','successState','errorState']
+      .forEach(s => document.getElementById(s).style.display = s === id ? '' : 'none');
   }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
   init();
 </script>
