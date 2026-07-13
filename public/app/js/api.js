@@ -28,7 +28,9 @@ async function getFreshToken() {
   // Always wait for auth to be ready first
   const user = firebaseAuth.currentUser || await waitForAuthReady();
   if (user) {
-    const token = await user.getIdToken(true);
+    // Only force-refresh if token is close to expiry (every ~50 min)
+    // Passing false = use cached token if still valid (avoids race conditions)
+    const token = await user.getIdToken(false);
     localStorage.setItem('ll_token', token);
     return token;
   }
