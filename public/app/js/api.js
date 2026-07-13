@@ -4,10 +4,30 @@ const BASE = '/api';
 // Import Firebase auth to get fresh tokens
 import { firebaseAuth } from './firebase-config.js';
 
+/**
+ * Wait for Firebase Auth to finish restoring the session.
+ * Returns the current user (or null if not logged in).
+ */
+function waitForAuthReady() {
+  return new Promise((resolve) => {
+    // If already resolved, return immediately
+    if (firebaseAuth.currentUser !== undefined) {
+      // currentUser can be null (not logged in) or a User object
+      resolve(firebaseAuth.currentUser);
+      return;
+    }
+    // Otherwise wait for the first auth state change
+    const unsubscribe = firebaseAuth.onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+}
+
 async function getFreshToken() {
-  const user = firebaseAuth.currentUser;
+  // Always wait for auth to be ready first
+  const user = firebaseAuth.currentUser || await waitForAuthReady();
   if (user) {
-    // Always get a fresh token (auto-refreshes if expired)
     const token = await user.getIdToken(true);
     localStorage.setItem('ll_token', token);
     return token;

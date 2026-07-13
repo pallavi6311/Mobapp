@@ -379,7 +379,13 @@
         </div>`).join('') :
         '<div class="empty-state"><div class="empty-icon">📬</div><p>No requests yet</p></div>';
 
-    } catch(err) { console.error(err); }
+    } catch(err) {
+      console.error('Traveller data load error:', err);
+      document.getElementById('tRecentTrips').innerHTML =
+        `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p><button class="btn btn-sm btn-ghost" onclick="loadTravellerData()">Retry</button></div>`;
+      document.getElementById('tRecentShipments').innerHTML =
+        `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p></div>`;
+    }
   }
 
   async function loadSenderData() {
@@ -445,7 +451,13 @@
         </div>`).join('') :
         '<div class="empty-state"><div class="empty-icon">🔍</div><p>No travellers available right now</p></div>';
 
-    } catch(err) { console.error(err); }
+    } catch(err) {
+      console.error('Sender data load error:', err);
+      document.getElementById('sRecentShipments').innerHTML =
+        `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p><button class="btn btn-sm btn-ghost" onclick="loadSenderData()">Retry</button></div>`;
+      document.getElementById('sAvailableTrips').innerHTML =
+        `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p></div>`;
+    }
   }
 
   // Post Trip form
