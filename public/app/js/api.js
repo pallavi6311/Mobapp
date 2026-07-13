@@ -10,13 +10,6 @@ import { firebaseAuth } from './firebase-config.js';
  */
 function waitForAuthReady() {
   return new Promise((resolve) => {
-    // If already resolved, return immediately
-    if (firebaseAuth.currentUser !== undefined) {
-      // currentUser can be null (not logged in) or a User object
-      resolve(firebaseAuth.currentUser);
-      return;
-    }
-    // Otherwise wait for the first auth state change
     const unsubscribe = firebaseAuth.onAuthStateChanged((user) => {
       unsubscribe();
       resolve(user);
@@ -25,16 +18,15 @@ function waitForAuthReady() {
 }
 
 async function getFreshToken() {
-  // Always wait for auth to be ready first
-  const user = firebaseAuth.currentUser || await waitForAuthReady();
+  // Wait for Firebase Auth to restore session, then get a fresh token
+  const user = await waitForAuthReady();
   if (user) {
-    // Only force-refresh if token is close to expiry (every ~50 min)
-    // Passing false = use cached token if still valid (avoids race conditions)
     const token = await user.getIdToken(false);
     localStorage.setItem('ll_token', token);
     return token;
   }
-  return localStorage.getItem('ll_token');
+  // Not logged in — redirect to login
+  return null;
 }
 
 export async function apiCall(method, path, body = null) {
