@@ -2,6 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { auth } from '../config/firebase';
 
 export interface AuthRequest extends Request {
+  headers: Request['headers'];
+  body: Request['body'];
+  params: Request['params'];
+  query: Request['query'];
   user?: { uid: string; email?: string; role?: string; };
 }
 
