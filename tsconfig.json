@@ -8,6 +8,7 @@
     "target": "es2017",
     "rootDir": "./src",
     "outDir": "./dist",
+    "strict": false,
     "lib": ["es6"],
     "resolveJsonModule": true,
     "types": ["node"],
