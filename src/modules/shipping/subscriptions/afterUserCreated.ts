@@ -1,5 +1,5 @@
-import { User } from "../../users/domain/user";
 import { UserCreated } from "../../users/domain/events/userCreated";
+import { IDomainEvent } from "../../../shared/domain/events/IDomainEvent";
 import { IHandle } from "../../../shared/domain/events/IHandle";
 import { CreateTraveller } from "../useCases/travellers/createTraveller/CreateTraveller";
 import { DomainEvents } from "../../../shared/domain/events/DomainEvents";
@@ -17,7 +17,9 @@ export class AfterUserCreated implements IHandle<UserCreated> {
     DomainEvents.register(this.onUserCreated.bind(this), UserCreated.name);
   }
 
-  private async onUserCreated(event: UserCreated): Promise<void> {
+  private async onUserCreated(event: IDomainEvent): Promise<void> {
+    if (!(event instanceof UserCreated)) return;
+
     const { user } = event;
 
     try {
