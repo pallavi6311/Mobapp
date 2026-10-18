@@ -17,8 +17,6 @@ router.post('/', verifyToken, async (req: AuthRequest, res: Response) => {
   try {
     const travDoc = await db().collection('users').doc(req.user!.uid).get();
     const trav = travDoc.data();
-    if (trav?.identityVerificationStatus !== 'verified')
-      return res.status(403).json({ error: 'Traveller identity verification is pending. Contact the platform administrator before posting trips.' });
 
     const tripRef = db().collection('trips').doc();
     const trip = {

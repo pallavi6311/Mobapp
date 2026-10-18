@@ -248,11 +248,6 @@ router.patch('/:id/respond', verifyToken, async (req: AuthRequest, res: Response
       return res.status(403).json({ error: 'Not your shipment' });
     if (ship.status !== 'pending')
       return res.status(400).json({ error: 'Already responded' });
-    if (action === 'accept') {
-      const traveller = await db().collection('users').doc(req.user!.uid).get();
-      if (traveller.data()?.identityVerificationStatus !== 'verified')
-        return res.status(403).json({ error: 'Traveller identity verification is pending. Contact the platform administrator before accepting shipments.' });
-    }
 
     await doc.ref.update({
       status: action === 'accept' ? 'accepted' : 'rejected',

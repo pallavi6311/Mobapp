@@ -29,7 +29,6 @@
 
   <!-- Traveller view: My Trips + Post Trip -->
   <div id="travellerView" style="display:none">
-    <div id="travellerKycNotice" style="display:none;background:#fff4dc;border:1px solid #e6c46a;border-radius:8px;padding:.8rem;margin-bottom:1rem;font-size:.85rem;color:#704d00"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.25rem">
       <h2>My Trips</h2>
       <button class="btn btn-primary" onclick="openModal('postTripModal')">
@@ -207,13 +206,6 @@
 
   if (user.role === 'traveller') {
     document.getElementById('travellerView').style.display = 'block';
-    api.getMe().then(profile => {
-      if (profile.identityVerificationStatus !== 'verified') {
-        const notice = document.getElementById('travellerKycNotice');
-        notice.textContent = 'Identity verification is pending. Contact the platform administrator to complete a manual review before posting trips or accepting shipments.';
-        notice.style.display = 'block';
-      }
-    }).catch(err => showToast(`Could not load verification status: ${err.message}`, 'error'));
     loadMyTrips();
   } else {
     document.getElementById('senderView').style.display = 'block';
