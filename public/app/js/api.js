@@ -71,9 +71,6 @@ export const api = {
   markPickup: (id, evidence) => apiCall('PATCH', `/shipments/${id}/mark-pickup`, evidence),
   uploadDeliveryPhoto: (id, evidence) =>
     apiCall('POST', `/shipments/${id}/upload-delivery-photo`, evidence),
-  shareShipmentLocation: (id, location) =>
-    apiCall('POST', `/shipments/${id}/location`, { location }),
-  getShipmentLocations: (id) => apiCall('GET', `/shipments/${id}/locations`),
   confirmDelivery:  (id)   => apiCall('POST',  `/shipments/${id}/confirm-delivery`),
 
   // Payments (Mock — swap in real gateway keys later)

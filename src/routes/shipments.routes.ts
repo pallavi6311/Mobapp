@@ -38,21 +38,6 @@ function publicShipment(data: FirebaseFirestore.DocumentData): FirebaseFirestore
   return shipment;
 }
 
-interface LocationEvidence {
-  latitude: number;
-  longitude: number;
-  accuracy: number;
-}
-
-function validLocation(location: unknown): location is LocationEvidence {
-  if (!location || typeof location !== 'object') return false;
-  const point = location as Partial<LocationEvidence>;
-  return location &&
-    Number.isFinite(point.latitude) && point.latitude! >= -90 && point.latitude! <= 90 &&
-    Number.isFinite(point.longitude) && point.longitude! >= -180 && point.longitude! <= 180 &&
-    Number.isFinite(point.accuracy) && point.accuracy! >= 0 && point.accuracy! <= 100;
-}
-
 function validPhoto(photoBase64: unknown, mimeType: unknown): photoBase64 is string {
   if (typeof photoBase64 !== 'string' || typeof mimeType !== 'string' ||
       !ALLOWED_IMAGE_TYPES.includes(mimeType) ||
@@ -270,16 +255,14 @@ router.post('/:id/pickup-code', verifyToken, async (req: AuthRequest, res: Respo
 router.post('/:id/delivery-code', verifyToken, async (req: AuthRequest, res: Response) =>
   issueOtp(req, res, 'delivery'));
 
-// Traveller confirms pickup with the sender's OTP, matching tamper seal, photo and GPS evidence.
+// Traveller confirms pickup with the sender's OTP, matching tamper seal, and photo evidence.
 router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Response) => {
   if (req.user?.role !== 'traveller')
     return res.status(403).json({ error: 'Only travellers can mark pickup' });
 
-  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg', location } = req.body;
+  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg' } = req.body;
   if (!/^\d{6}$/.test(otp))
     return res.status(400).json({ error: 'A valid 6-digit sender OTP is required' });
-  if (!validLocation(location))
-    return res.status(400).json({ error: 'A precise GPS fix (within 100 metres) is required' });
   if (!validPhoto(photoBase64, mimeType))
     return res.status(400).json({ error: 'A valid JPEG, PNG or WebP photo under 10 MB is required' });
 
@@ -315,7 +298,6 @@ router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Resp
         status: 'picked_up',
         pickedUpAt: now,
         pickupPhotoURL: photoURL,
-        pickupLocation: { latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy, recordedAt: now },
         pickupOtpUsedAt: now,
         updatedAt: now,
       });
@@ -329,16 +311,14 @@ router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Resp
   }
 });
 
-// Delivery is recorded only after the receiver's OTP, seal check, photo and GPS evidence.
+// Delivery is recorded only after the receiver's OTP, seal check, and photo evidence.
 router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, res: Response) => {
   if (req.user?.role !== 'traveller')
     return res.status(403).json({ error: 'Only travellers can upload delivery photos' });
 
-  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg', location } = req.body;
+  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg' } = req.body;
   if (!/^\d{6}$/.test(otp))
     return res.status(400).json({ error: 'A valid 6-digit receiver OTP is required' });
-  if (!validLocation(location))
-    return res.status(400).json({ error: 'A precise GPS fix (within 100 metres) is required' });
   if (!validPhoto(photoBase64, mimeType))
     return res.status(400).json({ error: 'A valid JPEG, PNG or WebP photo under 10 MB is required' });
 
@@ -372,7 +352,6 @@ router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, 
         status: 'delivered',
         deliveryPhotoURL: photoURL,
         deliveredAt: now,
-        deliveryLocation: { latitude: location.latitude, longitude: location.longitude, accuracy: location.accuracy, recordedAt: now },
         deliveryOtpUsedAt: now,
         updatedAt: now,
         deliveryConfirmed: false,
@@ -451,61 +430,6 @@ router.post('/:id/confirm-delivery', verifyToken, async (req: AuthRequest, res: 
     });
 
     return res.json({ message: 'Delivery confirmed. Wallet credited to traveller.' });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/:id/location', verifyToken, async (req: AuthRequest, res: Response) => {
-  if (req.user?.role !== 'traveller')
-    return res.status(403).json({ error: 'Only travellers can share shipment locations' });
-  const { location } = req.body;
-  if (!validLocation(location))
-    return res.status(400).json({ error: 'A precise GPS fix (within 100 metres) is required' });
-
-  try {
-    const doc = await db().collection('shipments').doc(req.params.id).get();
-    if (!doc.exists) return res.status(404).json({ error: 'Shipment not found' });
-    const ship = doc.data()!;
-    if (ship.travellerId !== req.user!.uid)
-      return res.status(403).json({ error: 'Not your shipment' });
-    if (!['picked_up', 'delivered'].includes(ship.status))
-      return res.status(400).json({ error: 'Location sharing is available after parcel pickup' });
-    if (ship.status === 'delivered')
-      return res.status(400).json({ error: 'Location sharing ended when delivery was recorded' });
-
-    const now = new Date().toISOString();
-    const locationRef = doc.ref.collection('locations').doc();
-    const previousLocations = await doc.ref.collection('locations')
-      .orderBy('recordedAt', 'desc')
-      .limit(1)
-      .get();
-    if (!previousLocations.empty) {
-      const previousAt = Date.parse(previousLocations.docs[0].data().recordedAt);
-      if (Number.isFinite(previousAt) && Date.now() - previousAt < 30_000)
-        return res.status(429).json({ error: 'Wait 30 seconds before sharing another location update' });
-    }
-    await locationRef.set({
-      latitude: location.latitude,
-      longitude: location.longitude,
-      accuracy: location.accuracy,
-      recordedAt: now,
-    });
-    return res.status(201).json({ message: 'Location shared with the sender', recordedAt: now });
-  } catch (err: any) {
-    return res.status(500).json({ error: err.message });
-  }
-});
-
-router.get('/:id/locations', verifyToken, async (req: AuthRequest, res: Response) => {
-  try {
-    const doc = await db().collection('shipments').doc(req.params.id).get();
-    if (!doc.exists) return res.status(404).json({ error: 'Shipment not found' });
-    const ship = doc.data()!;
-    if (ship.senderId !== req.user!.uid && ship.travellerId !== req.user!.uid)
-      return res.status(403).json({ error: 'Not your shipment' });
-    const snap = await doc.ref.collection('locations').orderBy('recordedAt', 'desc').limit(50).get();
-    return res.json(snap.docs.map(point => point.data()));
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
