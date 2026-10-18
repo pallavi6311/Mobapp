@@ -37,6 +37,21 @@ npm run dev
 
 You can visit the app by going to `http://localhost:3000`.
 
+### Shipment handover safeguards
+
+- Senders record a tamper-seal serial and declared parcel value when requesting a shipment. The request explicitly states that PeerDrop does not currently provide insurance.
+- After payment, the sender generates a six-digit pickup OTP and shares it privately with the traveller at handover. The traveller must enter it, match the seal, take a pickup photo, and allow a GPS fix (accuracy within 100 m).
+- At delivery, the sender generates a separate six-digit OTP and shares it with the receiver. The traveller must enter the receiver's code, confirm the same seal, take a delivery photo, and record GPS before delivery can be marked complete.
+- Travellers can share GPS updates during transit. The sender can open recorded coordinates on OpenStreetMap. GPS is evidence only: it can be spoofed and is not a geofence check against the delivery address.
+- The sender must still confirm receipt before the app releases the traveller's wallet balance. Failed photo-storage uploads do not mark a shipment as handed over.
+- New traveller accounts start with `identityVerificationStatus: "pending"` and cannot post trips or accept shipments until an authorized administrator completes an out-of-band identity review and changes that field to `"verified"` in the Firebase `users/{uid}` document. Existing traveller accounts without the field also need review. The app does not collect or store identity documents.
+
+OTP codes expire after 30 minutes, are limited to five attempts, and are stored as keyed hashes. `APP_SECRET` must be configured; Firebase's private key is used only as a fallback. Codes are shown to the sender once in the app because no SMS provider is configured; senders must share them privately and should not share a code before the physical handover.
+
+This release does not integrate an automated identity/KYC verification provider, SMS delivery, live map tracking, or an insurance underwriter. The GPS updates are manually triggered, the declared value is not insured, and the handover checks reduce risk but cannot guarantee that a parcel will not be lost or stolen. Do not describe the manual identity review as third-party KYC or any parcel as insured.
+
+The current payment implementation is also simulated: shipment state and an in-app wallet balance are updated, but no real payment or regulated escrow is connected. Configure a payment provider before treating funds as held or released.
+
 ### Demo
 
 [You can visit the site here](https://loadlink.up.railway.app/).

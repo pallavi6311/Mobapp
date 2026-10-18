@@ -23,6 +23,7 @@ router.post('/register', async (req: Request, res: Response) => {
       fullName,
       phone: phone || '',
       role,
+      identityVerificationStatus: role === 'traveller' ? 'pending' : 'not_required',
       walletBalance: 0,
       createdAt: new Date().toISOString(),
     });

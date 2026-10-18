@@ -66,10 +66,14 @@ export const api = {
   getMyShipments:   ()     => apiCall('GET',   '/shipments/my'),
   getShipment:      (id)   => apiCall('GET',   `/shipments/${id}`),
   respondShipment:  (id, action) => apiCall('PATCH', `/shipments/${id}/respond`, { action }),
-  updateStatus:     (id, status) => apiCall('PATCH', `/shipments/${id}/status`,  { status }),
-  markPickup:       (id)   => apiCall('PATCH', `/shipments/${id}/mark-pickup`),
-  uploadDeliveryPhoto: (id, photoBase64, mimeType) =>
-    apiCall('POST', `/shipments/${id}/upload-delivery-photo`, { photoBase64, mimeType }),
+  generatePickupCode: (id) => apiCall('POST', `/shipments/${id}/pickup-code`),
+  generateDeliveryCode: (id) => apiCall('POST', `/shipments/${id}/delivery-code`),
+  markPickup: (id, evidence) => apiCall('PATCH', `/shipments/${id}/mark-pickup`, evidence),
+  uploadDeliveryPhoto: (id, evidence) =>
+    apiCall('POST', `/shipments/${id}/upload-delivery-photo`, evidence),
+  shareShipmentLocation: (id, location) =>
+    apiCall('POST', `/shipments/${id}/location`, { location }),
+  getShipmentLocations: (id) => apiCall('GET', `/shipments/${id}/locations`),
   confirmDelivery:  (id)   => apiCall('POST',  `/shipments/${id}/confirm-delivery`),
 
   // Payments (Mock — swap in real gateway keys later)

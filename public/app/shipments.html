@@ -96,6 +96,11 @@
 
   function formatAmt(p) { return `₹${(p/100).toFixed(2)}`; }
   function travelIcon(m){ return {flight:'✈️',train:'🚆',bus:'🚌',car:'🚗',bike:'🏍️'}[m]||'🚀'; }
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]);
+  }
 
   function showToast(msg, type='info') {
     const t = document.createElement('div');
@@ -201,6 +206,11 @@
       <div><strong>Pickup Spot:</strong> ${s.pickupSpot}</div>
       <div><strong>Delivery Address:</strong> ${s.deliveryAddress}</div>
       ${s.receiverPhone ? `<div><strong>Receiver Phone:</strong> ${s.receiverPhone}</div>` : ''}
+      <div><strong>Declared value:</strong> ₹${Number(s.declaredValue || 0).toLocaleString('en-IN')} · Insurance not provided</div>
+      <div><strong>Seal serial:</strong> ${escapeHtml(s.sealNumber || 'Not recorded')}</div>
+      ${s.pickupPhotoURL ? `<div><strong>Pickup handover photo:</strong></div><img src="${s.pickupPhotoURL}" alt="Sealed parcel at pickup" style="max-width:100%;border-radius:8px"/>` : ''}
+      ${s.pickupLocation ? `<div><strong>Pickup GPS:</strong> <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${s.pickupLocation.latitude}&mlon=${s.pickupLocation.longitude}">${s.pickupLocation.latitude.toFixed(5)}, ${s.pickupLocation.longitude.toFixed(5)} (±${Math.round(s.pickupLocation.accuracy)} m)</a></div>` : ''}
+      ${s.deliveryLocation ? `<div><strong>Delivery GPS:</strong> <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${s.deliveryLocation.latitude}&mlon=${s.deliveryLocation.longitude}">${s.deliveryLocation.latitude.toFixed(5)}, ${s.deliveryLocation.longitude.toFixed(5)} (±${Math.round(s.deliveryLocation.accuracy)} m)</a></div>` : ''}
       ${user.role==='traveller'
         ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone||'—'}</div>`
         : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone||'—'}</div>`}
@@ -225,20 +235,29 @@
           <button class="btn btn-accent" onclick="respond('accept')">✅ Accept</button>
           <button class="btn btn-danger" onclick="respond('reject')">❌ Reject</button>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'paid') {
-        actEl.innerHTML = `<button class="btn btn-primary" onclick="markPickup()">📦 Mark as Picked Up</button>`;
+        actEl.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:.65rem;width:100%">
+            <div style="font-size:.85rem;color:var(--gray-700)">Ask the sender for the pickup OTP only when they hand over the sealed parcel.</div>
+            <label>Sender's 6-digit pickup OTP<input type="text" id="pickupOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required/></label>
+            <label>Seal serial number<input type="text" id="pickupSealNumber" minlength="3" maxlength="50" required/></label>
+            <label>Take pickup photo<input type="file" id="pickupPhotoInput" accept="image/jpeg,image/png,image/webp" capture="environment" required/></label>
+            <button class="btn btn-primary" onclick="markPickup()">📦 Verify &amp; Record Pickup</button>
+          </div>`;
       } else if (s.status === 'picked_up') {
         actEl.innerHTML = `
           <div style="display:flex;flex-direction:column;gap:.75rem;width:100%">
             <div style="font-size:.85rem;color:var(--gray-700);font-weight:600">
-              📸 Take a photo of the parcel at the <strong>destination</strong> as delivery proof
+              Receiver verifies the intact seal and shares the OTP only after receiving the parcel. Share GPS updates while in transit.
             </div>
-            <input type="file" id="deliveryPhotoInput" accept="image/*" capture="environment"
-              style="font-size:.8rem;color:var(--gray-700)"/>
+            <label>Receiver's 6-digit delivery OTP<input type="text" id="deliveryOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required/></label>
+            <label>Confirm seal serial number<input type="text" id="deliverySealNumber" minlength="3" maxlength="50" required/></label>
+            <label>Take delivery photo<input type="file" id="deliveryPhotoInput" accept="image/jpeg,image/png,image/webp" capture="environment" required/></label>
+            <button class="btn btn-ghost" onclick="shareShipmentLocation()">📍 Share current GPS with sender</button>
             <button class="btn btn-accent" id="uploadPhotoBtn" onclick="uploadDeliveryPhoto()">
-              📸 Upload Delivery Photo &amp; Mark Delivered
+              📸 Verify Receiver &amp; Complete Delivery
             </button>
             <div id="photoUploadProgress" style="display:none;font-size:.8rem;color:var(--gray-400)">
-              Uploading photo…
+              Capturing GPS and uploading evidence…
             </div>
           </div>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
@@ -251,6 +270,16 @@
           <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-lg">
             💳 Pay ${formatAmt(s.totalAmount)} via UPI
           </a>`;
+      } else if (s.status === 'accepted' && s.paymentStatus === 'paid') {
+        actEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:.5rem">
+          <div style="font-size:.85rem">Generate a one-time pickup code and share it directly with the traveller at handover.</div>
+          <button class="btn btn-primary" onclick="generateHandoverCode('pickup')">🔐 Generate Pickup OTP</button>
+        </div>`;
+      } else if (s.status === 'picked_up' && s.paymentStatus === 'paid') {
+        actEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:.5rem">
+          <div style="font-size:.85rem">Give the delivery code to the receiver only when the sealed parcel is physically handed over. Share it privately; SMS is not configured.</div>
+          <button class="btn btn-primary" onclick="generateHandoverCode('delivery')">🔐 Generate Receiver OTP</button>
+        </div>`;
       } else if (s.status === 'delivered' && s.paymentStatus === 'paid') {
         // Show delivery photo if available
         const photoHtml = s.deliveryPhotoURL && !s.deliveryPhotoURL.startsWith('storage-unavailable')
@@ -270,6 +299,15 @@
     }
 
     openModal('detailModal');
+    if (s.status === 'picked_up' && user.role === 'sender') {
+      api.getShipmentLocations(s.id).then(points => {
+        if (!points.length || window.currentShipment?.id !== s.id) return;
+        const latest = points[0];
+        const history = document.createElement('div');
+        history.innerHTML = `<strong>Latest shared GPS:</strong> <a target="_blank" rel="noopener" href="https://www.openstreetmap.org/?mlat=${latest.latitude}&mlon=${latest.longitude}">${latest.latitude.toFixed(5)}, ${latest.longitude.toFixed(5)} (±${Math.round(latest.accuracy)} m)</a> · ${new Date(latest.recordedAt).toLocaleString()}`;
+        document.getElementById('detailBody').appendChild(history);
+      }).catch(err => showToast(`Could not load shared locations: ${err.message}`, 'error'));
+    }
   };
 
   // ── Quick accept/reject from list ─────────────────────────────────────────
@@ -306,9 +344,21 @@
   window.markPickup = async function() {
     const s = window.currentShipment;
     try {
-      await api.markPickup(s.id);
+      const input = document.getElementById('pickupPhotoInput');
+      const file = input && input.files && input.files[0];
+      if (!file) { showToast('Take a pickup photo first', 'error'); return; }
+      if (file.size > 10 * 1024 * 1024) { showToast('Photo must be under 10 MB', 'error'); return; }
+      const location = await getPreciseLocation();
+      const photoBase64 = await readPhoto(file);
+      await api.markPickup(s.id, {
+        otp: document.getElementById('pickupOtp').value.trim(),
+        sealNumber: document.getElementById('pickupSealNumber').value.trim(),
+        photoBase64,
+        mimeType: file.type,
+        location,
+      });
       closeModal('detailModal');
-      showToast('Parcel marked as Picked Up! 📦 Upload a delivery photo when you arrive.', 'success');
+      showToast('Pickup OTP, seal, photo and GPS verified. 📦', 'success');
       loadShipments();
     } catch(err) { showToast(err.message, 'error'); }
   };
@@ -328,23 +378,21 @@
     if (file.size > 10 * 1024 * 1024) {
       showToast('Photo must be under 10 MB', 'error'); return;
     }
+    const otp = document.getElementById('deliveryOtp').value.trim();
+    const sealNumber = document.getElementById('deliverySealNumber').value.trim();
+    if (!/^\d{6}$/.test(otp)) { showToast('Enter the receiver’s 6-digit OTP', 'error'); return; }
 
     btn.disabled = true;
     prog.style.display = '';
-    prog.textContent   = 'Uploading delivery photo…';
+    prog.textContent   = 'Capturing GPS and uploading delivery evidence…';
 
     try {
-      // Convert file to base64
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload  = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
+      const [photoBase64, location] = await Promise.all([readPhoto(file), getPreciseLocation()]);
+      await api.uploadDeliveryPhoto(s.id, {
+        otp, sealNumber, photoBase64, mimeType: file.type, location,
       });
-
-      await api.uploadDeliveryPhoto(s.id, base64, file.type);
       closeModal('detailModal');
-      showToast('Delivery photo uploaded! Waiting for sender to confirm. 📸', 'success');
+      showToast('Receiver OTP, seal, photo and GPS recorded. Waiting for sender confirmation. 📸', 'success');
       loadShipments();
     } catch(err) {
       btn.disabled       = false;
@@ -353,14 +401,45 @@
     }
   };
 
-  window.updateStatus = async function(status) {
+  function readPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',')[1]);
+      reader.onerror = () => reject(new Error('Could not read the selected photo'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function getPreciseLocation() {
+    if (!navigator.geolocation) return Promise.reject(new Error('This device does not support GPS location'));
+    return new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(
+      position => resolve({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+      }),
+      error => reject(new Error(error.code === 1 ? 'Allow location permission to record handover evidence' : 'Could not get GPS. Try again outdoors.')),
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+    ));
+  }
+
+  window.generateHandoverCode = async function(purpose) {
     const s = window.currentShipment;
     try {
-      await api.updateStatus(s.id, status);
-      closeModal('detailModal');
-      showToast(`Marked as ${status.replace(/_/g,' ')}`, 'success');
-      loadShipments();
-    } catch(err) { showToast(err.message, 'error'); }
+      const result = purpose === 'pickup'
+        ? await api.generatePickupCode(s.id)
+        : await api.generateDeliveryCode(s.id);
+      alert(`${purpose === 'pickup' ? 'Pickup' : 'Receiver delivery'} OTP: ${result.code}\n\nExpires in 30 minutes. Share this code privately with the person receiving the parcel. SMS is not configured.`);
+    } catch (err) { showToast(err.message, 'error'); }
+  };
+
+  window.shareShipmentLocation = async function() {
+    const s = window.currentShipment;
+    try {
+      const location = await getPreciseLocation();
+      await api.shareShipmentLocation(s.id, location);
+      showToast('Current GPS shared with the sender', 'success');
+    } catch (err) { showToast(err.message, 'error'); }
   };
 
   window.confirmDelivery = async function() {
