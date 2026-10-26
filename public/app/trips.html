@@ -60,10 +60,21 @@
         <label>To</label>
         <input type="text" id="searchTo" placeholder="Destination city"/>
       </div>
+      <div class="form-group">
+        <label>Departure date (exact match)</label>
+        <input type="date" id="searchDate"/>
+      </div>
+      <div class="form-group">
+        <label>Parcel weight (kg)</label>
+        <input type="number" id="searchWeight" placeholder="e.g. 2.5" min="0.1" step="0.1"/>
+      </div>
       <button class="btn btn-primary" onclick="searchTrips()">
         <span class="material-symbols-outlined">search</span> Search
       </button>
-      <button class="btn btn-ghost" onclick="loadAllTrips()">Clear</button>
+      <button class="btn btn-ghost" onclick="clearTripSearch()">Clear</button>
+    </div>
+    <div class="text-muted text-sm" style="margin:-.75rem 0 1rem">
+      Smart Match ranks route, date, and capacity fit. Estimated prices are informational only; payments are not processed here.
     </div>
 
     <div id="tripsContainer">
@@ -199,6 +210,8 @@
 <script type="module">
   import { api, getUser, getToken, timeAgo } from './js/api.js';
 
+  let displayedTrips = [];
+
   const user = getUser();
   if (!user || !getToken()) { window.location.href = 'login.html'; }
 
@@ -212,48 +225,124 @@
     // loadAllTrips called after it's defined below
   }
 
-  window.loadAllTrips = async function(from='', to='') {
+  window.loadAllTrips = async function(from='', to='', departureDate='', parcelWeight='') {
     const el = document.getElementById('tripsContainer');
     el.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
     try {
       const q = (from || to) ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
       const trips = await api.getTrips(q);
-      if (!trips.length) {
-        el.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><p>No trips found. Try different cities.</p></div>';
+      const normalizedFrom = from.toLocaleLowerCase();
+      const normalizedTo = to.toLocaleLowerCase();
+      const requestedWeight = Number(parcelWeight);
+      const hasRequestedWeight = Number.isFinite(requestedWeight) && requestedWeight > 0;
+      const rankedTrips = trips
+        .filter((trip) => !departureDate || String(trip.departureDate || '').slice(0, 10) === departureDate)
+        .filter((trip) => {
+          const capacity = Number(trip.availableWeight);
+          return !hasRequestedWeight || !Number.isFinite(capacity) || capacity <= 0 || capacity >= requestedWeight;
+        })
+        .map((trip) => {
+          const exactRoute = Boolean(from || to)
+            && (!normalizedFrom || String(trip.from || '').trim().toLocaleLowerCase() === normalizedFrom)
+            && (!normalizedTo || String(trip.to || '').trim().toLocaleLowerCase() === normalizedTo);
+          const capacity = Number(trip.availableWeight);
+          const hasKnownCapacity = Number.isFinite(capacity) && capacity > 0;
+          const fitsKnownCapacity = hasRequestedWeight && hasKnownCapacity && capacity >= requestedWeight;
+          const score = (exactRoute ? 4 : 0)
+            + (departureDate ? 2 : 0)
+            + (fitsKnownCapacity ? 1 : 0);
+          return { trip, score, hasKnownCapacity };
+        })
+        .sort((a, b) => b.score - a.score
+          || String(a.trip.departureDate || '').localeCompare(String(b.trip.departureDate || ''))
+          || Number(a.trip.pricePerKg || 0) - Number(b.trip.pricePerKg || 0));
+
+      if (!rankedTrips.length) {
+        const reason = departureDate || hasRequestedWeight
+          ? 'No trips match those date and capacity details. Try changing your filters.'
+          : 'No trips found. Try different cities.';
+        el.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><p>${reason}</p></div>`;
         return;
       }
-      el.innerHTML = '<div class="trips-grid">' + trips.map(t => `
+
+      displayedTrips = rankedTrips.map(({ trip }) => trip);
+      el.innerHTML = '<div class="trips-grid">' + rankedTrips.map(({ trip: t, score, hasKnownCapacity }, index) => {
+        const estimate = hasRequestedWeight ? Number(t.pricePerKg) * requestedWeight : 0;
+        const capacityText = hasKnownCapacity
+          ? `${escapeHtml(t.availableWeight)} kg available`
+          : 'Capacity not specified';
+        const matchLabel = hasRequestedWeight && !hasKnownCapacity
+          ? 'Capacity unverified'
+          : score >= 7 ? 'Strong match' : score >= 4 ? 'Good route match' : 'Route match';
+        return `
         <div class="trip-card">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
             <div class="trip-route">
-              <span class="city">${t.from}</span>
+              <span class="city">${escapeHtml(t.from)}</span>
               <span class="arrow">→</span>
-              <span class="city">${t.to}</span>
+              <span class="city">${escapeHtml(t.to)}</span>
             </div>
-            <span class="badge badge-open">open</span>
+            <span class="badge badge-open">${matchLabel}</span>
           </div>
           <div class="trip-meta">
-            <span>📅 ${t.departureDate} ${t.departureTime || ''}</span>
-            <span>${travelIcon(t.meansOfTravel)} ${t.meansOfTravel}</span>
-            ${t.availableWeight ? `<span>⚖️ ${t.availableWeight} kg available</span>` : ''}
+            <span>📅 ${escapeHtml(t.departureDate)} ${escapeHtml(t.departureTime || '')}</span>
+            <span>${travelIcon(t.meansOfTravel)} ${escapeHtml(t.meansOfTravel)}</span>
+            <span>⚖️ ${capacityText}</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-top:.75rem;flex-wrap:wrap;gap:.5rem">
-            <div class="trip-price">₹${t.pricePerKg}/kg · by ${t.travellerName}</div>
-            <button class="btn btn-accent btn-sm" onclick="openRequest('${t.id}', ${t.pricePerKg}, '${t.from}', '${t.to}', '${t.departureDate}')">
+            <div class="trip-price">₹${escapeHtml(t.pricePerKg)}/kg · by ${escapeHtml(t.travellerName)}</div>
+            <button class="btn btn-accent btn-sm" data-trip-index="${index}">
               <span class="material-symbols-outlined" style="font-size:.9rem">send</span> Request to Ship
             </button>
           </div>
-          <div class="text-muted text-sm" style="margin-top:.4rem">${timeAgo(t.createdAt)}</div>
-        </div>`).join('') + '</div>';
+          ${hasRequestedWeight ? `<div class="text-sm" style="margin-top:.65rem;font-weight:600">Estimated cost: ₹${estimate.toFixed(2)} · demo estimate only</div>` : ''}
+          <div class="text-sm" style="margin-top:.65rem;padding-top:.6rem;border-top:1px solid var(--gray-200)">
+            <strong>Trust info:</strong> Pickup and delivery use OTP + tamper-seal checks. Traveller ratings and delivery history are not available yet.
+          </div>
+          <div class="text-muted text-sm" style="margin-top:.4rem">${escapeHtml(timeAgo(t.createdAt))}</div>
+        </div>`;
+      }).join('') + '</div>';
     } catch (err) {
-      el.innerHTML = `<div class="error-msg">${err.message}</div>`;
+      el.textContent = '';
+      const error = document.createElement('div');
+      error.className = 'error-msg';
+      error.textContent = err.message;
+      el.appendChild(error);
     }
   };
 
   window.searchTrips = function() {
     const from = document.getElementById('searchFrom').value.trim();
     const to   = document.getElementById('searchTo').value.trim();
-    window.loadAllTrips(from, to);
+    const departureDate = document.getElementById('searchDate').value;
+    const parcelWeight = document.getElementById('searchWeight').value;
+    window.loadAllTrips(from, to, departureDate, parcelWeight);
+  };
+
+  window.clearTripSearch = function() {
+    document.getElementById('searchFrom').value = '';
+    document.getElementById('searchTo').value = '';
+    document.getElementById('searchDate').value = '';
+    document.getElementById('searchWeight').value = '';
+    window.loadAllTrips();
+  };
+
+  document.getElementById('tripsContainer').addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-trip-index]');
+    if (!button) return;
+    const trip = displayedTrips[Number(button.dataset.tripIndex)];
+    if (!trip) return;
+    window.openRequest(trip.id, trip.pricePerKg, trip.from, trip.to, trip.departureDate);
+  });
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[character]);
   };
 
   // Initial load for sender
@@ -316,8 +405,8 @@
   window.openRequest = function(tripId, price, from, to, date) {
     window.currentTripId    = tripId;
     window.currentTripPrice = price;
-    document.getElementById('tripSummary').innerHTML =
-      `<strong>${from} → ${to}</strong> on ${date} · ₹${price}/kg`;
+    document.getElementById('tripSummary').textContent =
+      `${from} → ${to} on ${date} · ₹${price}/kg`;
     document.getElementById('costEstimate').style.display = 'none';
     document.getElementById('requestForm').reset();
     openModal('requestModal');
