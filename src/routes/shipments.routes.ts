@@ -9,8 +9,6 @@ const router = Router();
 const OTP_TTL_MS = 30 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
 const OTP_RESEND_MS = 60 * 1000;
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 function otpHash(shipmentId: string, purpose: 'pickup' | 'delivery', code: string): string {
   const secret = process.env.APP_SECRET || process.env.FIREBASE_PRIVATE_KEY;
@@ -36,14 +34,6 @@ function publicShipment(data: FirebaseFirestore.DocumentData): FirebaseFirestore
     ...shipment
   } = data;
   return shipment;
-}
-
-function validPhoto(photoBase64: unknown, mimeType: unknown): photoBase64 is string {
-  if (typeof photoBase64 !== 'string' || typeof mimeType !== 'string' ||
-      !ALLOWED_IMAGE_TYPES.includes(mimeType) ||
-      !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(photoBase64) ||
-      !photoBase64) return false;
-  return Buffer.from(photoBase64, 'base64').length <= MAX_PHOTO_BYTES;
 }
 
 async function issueOtp(req: AuthRequest, res: Response, purpose: 'pickup' | 'delivery') {
@@ -100,31 +90,6 @@ async function validateOtpAttempt(
     }
     return false;
   });
-}
-
-// Firebase Storage bucket (set FIREBASE_STORAGE_BUCKET in .env)
-const STORAGE_BUCKET = process.env.FIREBASE_STORAGE_BUCKET || `${process.env.FIREBASE_PROJECT_ID}.appspot.com`;
-
-/**
- * Upload a base64 image to Firebase Storage via Admin SDK REST API.
- * Returns a signed read URL without making evidence photos public.
- */
-async function uploadBase64ToStorage(base64Data: string, mimeType: string, path: string): Promise<string> {
-  const { getStorage } = await import('firebase-admin/storage');
-  const bucket  = getStorage().bucket(STORAGE_BUCKET);
-  const buffer  = Buffer.from(base64Data, 'base64');
-  const file    = bucket.file(path);
-
-  await file.save(buffer, {
-    metadata: { contentType: mimeType },
-    resumable: false,
-  });
-
-  const [url] = await file.getSignedUrl({
-    action:  'read',
-    expires: '03-01-2050',
-  });
-  return url;
 }
 
 // POST /api/shipments
@@ -255,16 +220,14 @@ router.post('/:id/pickup-code', verifyToken, async (req: AuthRequest, res: Respo
 router.post('/:id/delivery-code', verifyToken, async (req: AuthRequest, res: Response) =>
   issueOtp(req, res, 'delivery'));
 
-// Traveller confirms pickup with the sender's OTP, matching tamper seal, and photo evidence.
+// Traveller confirms pickup with the sender's OTP and matching tamper seal.
 router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Response) => {
   if (req.user?.role !== 'traveller')
     return res.status(403).json({ error: 'Only travellers can mark pickup' });
 
-  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg' } = req.body;
+  const { otp = '', sealNumber = '' } = req.body;
   if (!/^\d{6}$/.test(otp))
     return res.status(400).json({ error: 'A valid 6-digit sender OTP is required' });
-  if (!validPhoto(photoBase64, mimeType))
-    return res.status(400).json({ error: 'A valid JPEG, PNG or WebP photo under 10 MB is required' });
 
   try {
     const doc = await db().collection('shipments').doc(req.params.id).get();
@@ -282,11 +245,6 @@ router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Resp
     if (!await validateOtpAttempt(doc.ref, ship.id, 'pickup', otp))
       return res.status(400).json({ error: 'Pickup OTP is incorrect, expired or locked. Ask the sender to generate a new one.' });
 
-    const photoURL = await uploadBase64ToStorage(
-      photoBase64,
-      mimeType,
-      `pickup-photos/${ship.id}/${Date.now()}.${mimeType.split('/')[1]}`
-    );
     const now = new Date().toISOString();
     const updated = await db().runTransaction(async (transaction) => {
       const fresh = await transaction.get(doc.ref);
@@ -297,7 +255,6 @@ router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Resp
       transaction.update(doc.ref, {
         status: 'picked_up',
         pickedUpAt: now,
-        pickupPhotoURL: photoURL,
         pickupOtpUsedAt: now,
         updatedAt: now,
       });
@@ -311,16 +268,14 @@ router.patch('/:id/mark-pickup', verifyToken, async (req: AuthRequest, res: Resp
   }
 });
 
-// Delivery is recorded only after the receiver's OTP, seal check, and photo evidence.
-router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, res: Response) => {
+// Delivery is recorded after the receiver's OTP and matching tamper seal.
+router.post('/:id/mark-delivery', verifyToken, async (req: AuthRequest, res: Response) => {
   if (req.user?.role !== 'traveller')
-    return res.status(403).json({ error: 'Only travellers can upload delivery photos' });
+    return res.status(403).json({ error: 'Only travellers can mark delivery' });
 
-  const { otp = '', sealNumber = '', photoBase64, mimeType = 'image/jpeg' } = req.body;
+  const { otp = '', sealNumber = '' } = req.body;
   if (!/^\d{6}$/.test(otp))
     return res.status(400).json({ error: 'A valid 6-digit receiver OTP is required' });
-  if (!validPhoto(photoBase64, mimeType))
-    return res.status(400).json({ error: 'A valid JPEG, PNG or WebP photo under 10 MB is required' });
 
   try {
     const doc = await db().collection('shipments').doc(req.params.id).get();
@@ -330,17 +285,12 @@ router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, 
     if (ship.travellerId !== req.user!.uid)
       return res.status(403).json({ error: 'Not your shipment' });
     if (ship.status !== 'picked_up')
-      return res.status(400).json({ error: 'Shipment must be in picked_up state to upload photo' });
+      return res.status(400).json({ error: 'Shipment must be in picked_up state to mark delivery' });
     if (String(sealNumber).trim() !== ship.sealNumber)
       return res.status(400).json({ error: 'The parcel seal is missing or does not match the pickup record' });
     if (!await validateOtpAttempt(doc.ref, ship.id, 'delivery', otp))
       return res.status(400).json({ error: 'Receiver OTP is incorrect, expired or locked. Ask the sender to generate a new one.' });
 
-    const photoURL = await uploadBase64ToStorage(
-      photoBase64,
-      mimeType,
-      `delivery-photos/${ship.id}/${Date.now()}.${mimeType.split('/')[1]}`
-    );
     const now = new Date().toISOString();
     const updated = await db().runTransaction(async (transaction) => {
       const fresh = await transaction.get(doc.ref);
@@ -350,7 +300,6 @@ router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, 
           !isValidOtp(latest, ship.id, 'delivery', otp)) return false;
       transaction.update(doc.ref, {
         status: 'delivered',
-        deliveryPhotoURL: photoURL,
         deliveredAt: now,
         deliveryOtpUsedAt: now,
         updatedAt: now,
@@ -361,8 +310,7 @@ router.post('/:id/upload-delivery-photo', verifyToken, async (req: AuthRequest, 
     if (!updated) return res.status(400).json({ error: 'Receiver OTP expired or was already used. Ask the sender to generate a new one.' });
 
     return res.json({
-      message: 'Receiver OTP, seal and delivery evidence recorded. Waiting for sender to confirm delivery.',
-      photoURL,
+      message: 'Receiver OTP and seal verified. Waiting for sender to confirm delivery.',
     });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

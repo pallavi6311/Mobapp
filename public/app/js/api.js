@@ -69,8 +69,8 @@ export const api = {
   generatePickupCode: (id) => apiCall('POST', `/shipments/${id}/pickup-code`),
   generateDeliveryCode: (id) => apiCall('POST', `/shipments/${id}/delivery-code`),
   markPickup: (id, evidence) => apiCall('PATCH', `/shipments/${id}/mark-pickup`, evidence),
-  uploadDeliveryPhoto: (id, evidence) =>
-    apiCall('POST', `/shipments/${id}/upload-delivery-photo`, evidence),
+  markDelivery: (id, evidence) =>
+    apiCall('POST', `/shipments/${id}/mark-delivery`, evidence),
   confirmDelivery:  (id)   => apiCall('POST',  `/shipments/${id}/confirm-delivery`),
 
   // Payments (Mock — swap in real gateway keys later)

@@ -208,19 +208,11 @@
       ${s.receiverPhone ? `<div><strong>Receiver Phone:</strong> ${s.receiverPhone}</div>` : ''}
       <div><strong>Declared value:</strong> ₹${Number(s.declaredValue || 0).toLocaleString('en-IN')} · Insurance not provided</div>
       <div><strong>Seal serial:</strong> ${escapeHtml(s.sealNumber || 'Not recorded')}</div>
-      ${s.pickupPhotoURL ? `<div><strong>Pickup handover photo:</strong></div><img src="${s.pickupPhotoURL}" alt="Sealed parcel at pickup" style="max-width:100%;border-radius:8px"/>` : ''}
       ${user.role==='traveller'
         ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone||'—'}</div>`
         : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone||'—'}</div>`}
       <div><strong>Payment:</strong> <span class="badge badge-${s.paymentStatus}">${s.paymentStatus}</span></div>
       ${s.escrowStatus ? `<div><strong>Escrow:</strong> <span style="color:var(--accent);font-weight:600">${s.escrowStatus}</span></div>` : ''}
-      ${s.deliveryPhotoURL && !s.deliveryPhotoURL.startsWith('storage-unavailable')
-        ? `<div><strong>Delivery Photo:</strong></div>
-           <img src="${s.deliveryPhotoURL}" alt="Delivery proof"
-             style="max-width:100%;border-radius:8px;border:2px solid var(--accent);margin-top:.25rem"/>`
-        : s.deliveryPhotoURL
-          ? `<div><strong>Delivery Photo:</strong> <span style="color:var(--gray-400)">received (preview unavailable)</span></div>`
-          : ''}
       <div><strong>Created:</strong> ${new Date(s.createdAt).toLocaleString()}</div>`;
 
     // Action buttons
@@ -238,7 +230,6 @@
             <div style="font-size:.85rem;color:var(--gray-700)">Ask the sender for the pickup OTP only when they hand over the sealed parcel.</div>
             <label>Sender's 6-digit pickup OTP<input type="text" id="pickupOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required/></label>
             <label>Seal serial number<input type="text" id="pickupSealNumber" minlength="3" maxlength="50" required/></label>
-            <label>Take pickup photo<input type="file" id="pickupPhotoInput" accept="image/jpeg,image/png,image/webp" capture="environment" required/></label>
             <button class="btn btn-primary" onclick="markPickup()">📦 Verify &amp; Record Pickup</button>
           </div>`;
       } else if (s.status === 'picked_up') {
@@ -249,13 +240,9 @@
             </div>
             <label>Receiver's 6-digit delivery OTP<input type="text" id="deliveryOtp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required/></label>
             <label>Confirm seal serial number<input type="text" id="deliverySealNumber" minlength="3" maxlength="50" required/></label>
-            <label>Take delivery photo<input type="file" id="deliveryPhotoInput" accept="image/jpeg,image/png,image/webp" capture="environment" required/></label>
-            <button class="btn btn-accent" id="uploadPhotoBtn" onclick="uploadDeliveryPhoto()">
-              📸 Verify Receiver &amp; Complete Delivery
+            <button class="btn btn-accent" onclick="markDelivery()">
+              ✅ Verify Receiver &amp; Complete Delivery
             </button>
-            <div id="photoUploadProgress" style="display:none;font-size:.8rem;color:var(--gray-400)">
-              Uploading evidence…
-            </div>
           </div>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
         actEl.innerHTML = `<div style="color:var(--warn);font-size:.85rem;font-weight:600">⏳ Waiting for sender to complete payment</div>`;
@@ -278,17 +265,7 @@
           <button class="btn btn-primary" onclick="generateHandoverCode('delivery')">🔐 Generate Receiver OTP</button>
         </div>`;
       } else if (s.status === 'delivered' && s.paymentStatus === 'paid') {
-        // Show delivery photo if available
-        const photoHtml = s.deliveryPhotoURL && !s.deliveryPhotoURL.startsWith('storage-unavailable')
-          ? `<div style="margin-bottom:.75rem">
-               <div style="font-size:.8rem;font-weight:600;color:var(--gray-600);margin-bottom:.35rem">📸 Delivery Photo from Traveller:</div>
-               <img src="${s.deliveryPhotoURL}" alt="Delivery proof" style="max-width:100%;border-radius:8px;border:2px solid var(--accent)"/>
-             </div>`
-          : s.deliveryPhotoURL
-            ? `<div style="font-size:.8rem;color:var(--gray-400);margin-bottom:.5rem">📸 Delivery photo received (preview unavailable)</div>`
-            : '';
         actEl.innerHTML = `
-          ${photoHtml}
           <button class="btn btn-primary" onclick="confirmDelivery()">✅ Confirm Delivery Received</button>`;
       } else if (s.status === 'pending') {
         actEl.innerHTML = `<div style="color:var(--gray-400);font-size:.85rem">⏳ Waiting for traveller to accept</div>`;
@@ -332,69 +309,31 @@
   window.markPickup = async function() {
     const s = window.currentShipment;
     try {
-      const input = document.getElementById('pickupPhotoInput');
-      const file = input && input.files && input.files[0];
-      if (!file) { showToast('Take a pickup photo first', 'error'); return; }
-      if (file.size > 10 * 1024 * 1024) { showToast('Photo must be under 10 MB', 'error'); return; }
-      const photoBase64 = await readPhoto(file);
       await api.markPickup(s.id, {
         otp: document.getElementById('pickupOtp').value.trim(),
         sealNumber: document.getElementById('pickupSealNumber').value.trim(),
-        photoBase64,
-        mimeType: file.type,
       });
       closeModal('detailModal');
-      showToast('Pickup OTP, seal and photo verified. 📦', 'success');
+      showToast('Pickup OTP and seal verified. 📦', 'success');
       loadShipments();
     } catch(err) { showToast(err.message, 'error'); }
   };
 
-  // ── Upload Delivery Photo ─────────────────────────────────────────────────
-  window.uploadDeliveryPhoto = async function() {
-    const s      = window.currentShipment;
-    const input  = document.getElementById('deliveryPhotoInput');
-    const btn    = document.getElementById('uploadPhotoBtn');
-    const prog   = document.getElementById('photoUploadProgress');
-
-    if (!input || !input.files || !input.files[0]) {
-      showToast('Please select a photo first', 'error'); return;
-    }
-
-    const file = input.files[0];
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('Photo must be under 10 MB', 'error'); return;
-    }
-    const otp = document.getElementById('deliveryOtp').value.trim();
-    const sealNumber = document.getElementById('deliverySealNumber').value.trim();
-    if (!/^\d{6}$/.test(otp)) { showToast('Enter the receiver’s 6-digit OTP', 'error'); return; }
-
-    btn.disabled = true;
-    prog.style.display = '';
-    prog.textContent   = 'Uploading delivery evidence…';
-
+  // ── Mark Delivered ────────────────────────────────────────────────────────
+  window.markDelivery = async function() {
+    const s = window.currentShipment;
     try {
-      const photoBase64 = await readPhoto(file);
-      await api.uploadDeliveryPhoto(s.id, {
-        otp, sealNumber, photoBase64, mimeType: file.type,
+      await api.markDelivery(s.id, {
+        otp: document.getElementById('deliveryOtp').value.trim(),
+        sealNumber: document.getElementById('deliverySealNumber').value.trim(),
       });
       closeModal('detailModal');
-      showToast('Receiver OTP and seal verified. Waiting for sender confirmation. 📸', 'success');
+      showToast('Receiver OTP and seal verified. Waiting for sender confirmation.', 'success');
       loadShipments();
     } catch(err) {
-      btn.disabled       = false;
-      prog.style.display = 'none';
-      showToast(err.message || 'Upload failed. Try again.', 'error');
+      showToast(err.message, 'error');
     }
   };
-
-  function readPhoto(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result).split(',')[1]);
-      reader.onerror = () => reject(new Error('Could not read the selected photo'));
-      reader.readAsDataURL(file);
-    });
-  }
 
   window.generateHandoverCode = async function(purpose) {
     const s = window.currentShipment;
