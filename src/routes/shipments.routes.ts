@@ -348,7 +348,7 @@ router.post('/:id/confirm-delivery', verifyToken, async (req: AuthRequest, res: 
         throw new Error('Shipment is no longer eligible for delivery confirmation');
       const current = tDoc.data()?.walletBalance || 0;
 
-      // Release escrow → credit traveller wallet
+      // Record demo earnings in the in-app balance; no real funds are transferred.
       t.update(travellerRef, { walletBalance: current + ship.totalAmount });
 
       // Record earning transaction
@@ -371,7 +371,7 @@ router.post('/:id/confirm-delivery', verifyToken, async (req: AuthRequest, res: 
       t.update(doc.ref, {
         status:              'completed',
         deliveryConfirmed:   true,
-        escrowStatus:        'released',
+        escrowStatus:        'demo-credited',
         completedAt:         new Date().toISOString(),
         updatedAt:           new Date().toISOString(),
       });

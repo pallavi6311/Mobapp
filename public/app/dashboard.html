@@ -407,13 +407,13 @@
         banner.innerHTML = `
           <div>
             <div style="font-weight:700;color:#856404">⚠️ Payment Required</div>
-            <div style="font-size:.85rem;color:#856404">${unpaid.length} shipment${unpaid.length>1?'s':''} accepted — pay to confirm your delivery</div>
+            <div style="font-size:.85rem;color:#856404">${unpaid.length} shipment${unpaid.length>1?'s':''} accepted — continue to the demo checkout (no money charged)</div>
           </div>
-          <a href="shipments.html" class="btn btn-sm" style="background:#ffc107;color:#000;font-weight:700">Pay Now →</a>`;
+          <a href="shipments.html" class="btn btn-sm" style="background:#ffc107;color:#000;font-weight:700">Demo checkout →</a>`;
         document.getElementById('sRecentShipments').parentElement.before(banner);
       }
 
-      // Recent shipments — with Pay Now button if accepted + unpaid
+      // Recent shipments — with demo checkout button if accepted + unpaid
       const sEl = document.getElementById('sRecentShipments');
       sEl.innerHTML = shipments.length ? shipments.slice(0,5).map(s => `
         <div class="shipment-item" style="padding:.75rem 0;border-bottom:1px solid var(--gray-200)">
@@ -428,7 +428,7 @@
           ${s.status === 'accepted' && s.paymentStatus === 'unpaid' ? `
           <div style="margin-top:.6rem">
             <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-sm">
-              💳 Pay Now ${formatAmount(s.totalAmount)}
+              Demo Checkout · ${formatAmount(s.totalAmount)}
             </a>
             <span style="font-size:.75rem;color:var(--warn);margin-left:.5rem">⚠️ Action required</span>
           </div>` : ''}

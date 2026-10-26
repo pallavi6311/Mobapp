@@ -7,8 +7,8 @@ dotenv.config();
 const router = Router();
 
 // ── POST /api/payments/create-order ──────────────────────────────────────────
-// Simulated payment: generates a mock order ID and holds amount in escrow.
-// No real payment gateway — swap in Razorpay/Cashfree keys here later.
+// Simulated payment: creates a mock order ID for the demo flow only.
+// No real money or payment provider is involved.
 router.post('/create-order', verifyToken, async (req: AuthRequest, res: Response) => {
   if (req.user?.role !== 'sender')
     return res.status(403).json({ error: 'Only senders can initiate payment' });
@@ -44,8 +44,8 @@ router.post('/create-order', verifyToken, async (req: AuthRequest, res: Response
 });
 
 // ── POST /api/payments/simulate-pay ──────────────────────────────────────────
-// Simulates a successful payment — marks shipment as paid, escrow held.
-// Frontend calls this when user clicks "Simulate Payment".
+// Marks the shipment as paid in the demo workflow; no money is transferred.
+// Frontend calls this when the sender confirms the demo payment.
 router.post('/simulate-pay', verifyToken, async (req: AuthRequest, res: Response) => {
   const { orderId, shipmentId } = req.body;
   if (!orderId || !shipmentId)
@@ -67,10 +67,10 @@ router.post('/simulate-pay', verifyToken, async (req: AuthRequest, res: Response
       paymentStatus: 'paid',
       orderId,
       paidAt:        new Date().toISOString(),
-      escrowStatus:  'held',   // funds held until sender confirms delivery
+      escrowStatus:  'demo-only',
     });
 
-    return res.json({ message: 'Payment simulated successfully. Amount held in escrow.', status: 'PAID' });
+    return res.json({ message: 'Demo payment recorded. No money was charged or held.', status: 'PAID' });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }

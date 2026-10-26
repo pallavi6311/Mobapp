@@ -32,18 +32,18 @@
   <div class="wallet-card" style="max-width:400px;margin-bottom:1.75rem">
     <div class="wallet-label">💰 Available Balance</div>
     <div class="wallet-amount" id="walletBalance">Loading…</div>
-    <div class="wallet-subtext">Earned from completed deliveries</div>
+    <div class="wallet-subtext">Demo balance · no real money is transferred</div>
   </div>
 
   <!-- How it works -->
   <div class="card" style="max-width:600px;margin-bottom:1.75rem">
     <div class="card-header"><div class="card-title">How the Wallet Works</div></div>
     <div style="display:flex;flex-direction:column;gap:.6rem;font-size:.875rem;color:var(--gray-700)">
-      <div>1️⃣ Sender pays for the shipment via Razorpay — amount is held in escrow</div>
+      <div>1️⃣ Sender confirms the demo checkout — <strong>no money is charged or held</strong></div>
       <div>2️⃣ Traveller picks up the parcel and marks it as <strong>Picked Up</strong></div>
       <div>3️⃣ Traveller verifies the receiver's OTP and parcel seal to mark delivery</div>
-      <div>4️⃣ Sender <strong>confirms delivery</strong> — the amount is credited to your wallet</div>
-      <div>5️⃣ You can withdraw your balance anytime (processed in 24 hours)</div>
+      <div>4️⃣ Sender <strong>confirms delivery</strong> — demo earnings are added to the in-app balance</div>
+      <div>5️⃣ Demo withdrawal only — no money is sent to a bank account</div>
     </div>
   </div>
 
@@ -54,14 +54,14 @@
       <form id="withdrawForm">
         <div style="display:flex;flex-direction:column;gap:.9rem">
           <div class="form-group">
-            <label>Amount to Withdraw (₹)</label>
+            <label>Demo amount to withdraw (₹)</label>
             <input type="number" id="withdrawAmt" placeholder="Enter amount" min="1" step="0.01" required/>
-            <div class="text-muted text-sm" style="margin-top:4px">Minimum ₹1 · Funds sent to your registered bank account</div>
+            <div class="text-muted text-sm" style="margin-top:4px">Minimum ₹1 · Demo only; no bank transfer is made</div>
           </div>
           <div id="withdrawError" class="error-msg" style="display:none"></div>
           <button type="submit" class="btn btn-accent btn-block" id="withdrawBtn">
             <span class="material-symbols-outlined" style="font-size:1rem">payments</span>
-            Request Withdrawal
+            Simulate Withdrawal
           </button>
         </div>
       </form>
@@ -123,14 +123,14 @@
       try {
         // Amount in paise
         await api.withdraw(Math.round(amtRs * 100));
-        showToast('Withdrawal request submitted! You\'ll receive funds in 24 hours.', 'success');
+        showToast('Demo withdrawal recorded. No money was sent to a bank.', 'success');
         document.getElementById('withdrawForm').reset();
         loadWallet();
       } catch (err) {
         errDiv.style.display = 'block'; errDiv.textContent = err.message;
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:1rem">payments</span> Request Withdrawal';
+        btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:1rem">payments</span> Simulate Withdrawal';
       }
     });
   } else {

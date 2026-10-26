@@ -147,7 +147,7 @@
         ${s.status==='accepted' && s.paymentStatus==='unpaid' && user && user.role==='sender'
           ? `<div style="margin-top:.5rem">
                <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-sm" onclick="event.stopPropagation()">
-                 💳 Pay Now ${formatAmt(s.totalAmount)}
+                 Demo checkout · ${formatAmt(s.totalAmount)}
                </a>
              </div>` : ''}
         ${s.status==='pending' && user && user.role==='traveller'
@@ -211,8 +211,8 @@
       ${user.role==='traveller'
         ? `<div><strong>Sender:</strong> ${s.senderName} · ${s.senderPhone||'—'}</div>`
         : `<div><strong>Traveller:</strong> ${s.travellerName} · ${s.travellerPhone||'—'}</div>`}
-      <div><strong>Payment:</strong> <span class="badge badge-${s.paymentStatus}">${s.paymentStatus}</span></div>
-      ${s.escrowStatus ? `<div><strong>Escrow:</strong> <span style="color:var(--accent);font-weight:600">${s.escrowStatus}</span></div>` : ''}
+      <div><strong>Demo payment:</strong> <span class="badge badge-${s.paymentStatus}">${s.paymentStatus}</span></div>
+      ${s.escrowStatus ? `<div><strong>Demo payment status:</strong> <span style="color:var(--accent);font-weight:600">${s.escrowStatus === 'released' || s.escrowStatus === 'demo-credited' ? 'Demo balance credited (no money transferred)' : 'Demo only (no real money held)'}</span></div>` : ''}
       <div><strong>Created:</strong> ${new Date(s.createdAt).toLocaleString()}</div>`;
 
     // Action buttons
@@ -252,7 +252,7 @@
       if (s.status === 'accepted' && s.paymentStatus === 'unpaid') {
         actEl.innerHTML = `
           <a href="payment.html?shipmentId=${s.id}" class="btn btn-accent btn-lg">
-            💳 Pay ${formatAmt(s.totalAmount)} via UPI
+            Continue to demo checkout · ${formatAmt(s.totalAmount)}
           </a>`;
       } else if (s.status === 'accepted' && s.paymentStatus === 'paid') {
         actEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:.5rem">
