@@ -264,4 +264,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
   .navbar-menu .hide-mobile { display: none; }
   h1 { font-size: 1.5rem; }
   .wallet-amount { font-size: 1.8rem; }
+  .navbar-brand { max-width: 70vw; min-width: 0; gap: 6px; font-size: .68rem; line-height: 1.2; }
+  .navbar-brand img { width: 30px; height: 30px; flex: 0 0 30px; }
+  .navbar-menu a[href="signup.html"] { display: none; }
 }
