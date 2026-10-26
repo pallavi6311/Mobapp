@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Demo Confirmation – PEER TO PEER PACKAGE DELIVERY</title>
+  <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+  <style>
+    body { background:#f3f6fa; }
+    .confirm-wrap { min-height:100vh; display:grid; place-items:center; padding:1rem; }
+    .confirm-card { width:100%; max-width:420px; padding:1.5rem; border:1px solid var(--gray-200); border-radius:22px; background:#fff; box-shadow:0 12px 40px rgba(16,36,58,.12); }
+    .brand { text-align:center; color:#073b57; font-weight:800; }
+    .demo-badge { width:max-content; max-width:100%; margin:1rem auto; padding:.35rem .7rem; border-radius:999px; background:#fff4d7; color:#825800; font-size:.68rem; font-weight:800; text-align:center; }
+    .confirm-amount { margin:.75rem 0 1.2rem; color:#172b3b; font-size:2.3rem; font-weight:800; text-align:center; }
+    .summary { margin-bottom:1rem; padding:.9rem 1rem; border:1px solid #edf0f4; border-radius:14px; background:#f7f9fc; font-size:.84rem; }
+    .summary-row { display:flex; justify-content:space-between; gap:1rem; padding:.3rem 0; }
+    .summary-row span { color:var(--gray-500); }
+    .demo-notice { margin:1rem 0; padding:.85rem; border-radius:12px; background:#fff8e8; color:#684b0b; font-size:.78rem; line-height:1.5; }
+    .demo-notice strong { display:block; margin-bottom:.2rem; }
+    .pin-input { width:100%; min-height:56px; text-align:center; font-size:1.5rem; letter-spacing:.6rem; }
+    .error-msg { display:none; }
+    @media (max-width:480px) { .confirm-card { padding:1.2rem; border-radius:18px; } }
+    body[data-theme="dark"] .confirm-card { background:#121d2e; border-color:var(--gray-200); }
+    body[data-theme="dark"] .brand, body[data-theme="dark"] .confirm-amount { color:var(--gray-900); }
+    body[data-theme="dark"] .demo-badge, body[data-theme="dark"] .demo-notice { background:#352c18; color:#f3d696; }
+    body[data-theme="dark"] .summary { background:#172438; border-color:var(--gray-200); }
+  </style>
+</head>
+<body>
+<main class="confirm-wrap">
+  <section class="confirm-card">
+    <div class="brand">PEER TO PEER PACKAGE DELIVERY</div>
+    <div class="demo-badge">DEMO CONFIRMATION · NOT A REAL PAYMENT</div>
+    <h1 style="font-size:1.15rem;text-align:center">Review and confirm</h1>
+    <div class="confirm-amount" id="confirmAmount">Loading…</div>
+    <div class="summary" id="shipmentSummary"></div>
+    <div class="demo-notice">
+      <strong>Demo code only — do not enter your UPI or bank PIN.</strong>
+      Enter any 4 digits to continue this demo. The code is checked only in this browser, never sent or saved. No money will be transferred.
+    </div>
+    <form id="confirmForm">
+      <label for="demoPin">4-digit demo confirmation code</label>
+      <input class="pin-input" type="password" id="demoPin" inputmode="numeric" autocomplete="off"
+        pattern="[0-9]{4}" minlength="4" maxlength="4" aria-describedby="pinError" required/>
+      <div id="pinError" class="error-msg" role="alert"></div>
+      <button class="btn btn-accent btn-block btn-lg" id="confirmButton" type="submit" style="margin-top:1rem">
+        Confirm demo payment
+      </button>
+    </form>
+    <a class="btn btn-ghost btn-block" href="shipments.html" style="margin-top:.5rem">Cancel</a>
+  </section>
+</main>
+<div id="toast-container"></div>
+<script type="module">
+  import { api, getUser, getToken } from './js/api.js';
+
+  const shipmentId = new URLSearchParams(location.search).get('shipmentId');
+  const orderKey = shipmentId ? `demo-payment-order:${shipmentId}` : '';
+  const orderId = orderKey ? sessionStorage.getItem(orderKey) : null;
+  const error = document.getElementById('pinError');
+  const form = document.getElementById('confirmForm');
+  const button = document.getElementById('confirmButton');
+
+  if (!getUser() || !getToken()) location.replace('login.html');
+  else if (!shipmentId || !orderId) location.replace('shipments.html');
+
+  if (shipmentId && orderId) {
+    try {
+      const shipment = await api.getShipment(shipmentId);
+      document.getElementById('confirmAmount').textContent = `₹${(shipment.totalAmount / 100).toFixed(2)}`;
+      document.getElementById('shipmentSummary').innerHTML = `
+        <div class="summary-row"><span>Parcel</span><strong>${escapeHtml(shipment.parcelDescription)}</strong></div>
+        <div class="summary-row"><span>Journey</span><strong>${escapeHtml(shipment.from)} → ${escapeHtml(shipment.to)}</strong></div>
+        <div class="summary-row"><span>Payment</span><strong>Demo only</strong></div>`;
+    } catch (err) {
+      error.style.display = 'block';
+      error.textContent = err.message || 'Could not load shipment details.';
+      form.hidden = true;
+    }
+  }
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const code = document.getElementById('demoPin').value;
+    if (!/^\d{4}$/.test(code)) {
+      error.style.display = 'block';
+      error.textContent = 'Enter any 4 digits for this demo. Do not use a real UPI or bank PIN.';
+      return;
+    }
+    error.style.display = 'none';
+    button.disabled = true;
+    button.textContent = 'Updating demo status…';
+    await new Promise(resolve => setTimeout(resolve, 900));
+    try {
+      await api.simulatePay({ orderId, shipmentId });
+      sessionStorage.removeItem(orderKey);
+      location.replace(`payment-success.html?shipmentId=${encodeURIComponent(shipmentId)}`);
+    } catch (err) {
+      button.disabled = false;
+      button.textContent = 'Confirm demo payment';
+      error.style.display = 'block';
+      error.textContent = err.message || 'Could not update demo payment status.';
+    }
+  });
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]);
+  }
+</script>
+</body>
+</html>

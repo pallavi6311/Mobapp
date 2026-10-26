@@ -65,36 +65,17 @@
 
         <div class="demo-notice">
           <span aria-hidden="true">ℹ️</span>
-          <div><strong>Demo only — no money will be charged.</strong>This button only marks the shipment as paid in the demo app. No UPI app, bank, card, or payment service is connected.</div>
+          <div><strong>Demo only — no money will be charged.</strong>Next, enter a demo confirmation code. This is not your UPI or bank PIN. No payment service is connected.</div>
         </div>
 
-        <button class="btn btn-accent btn-block btn-lg" id="payBtn" onclick="simulatePay()">
-          Confirm demo payment · ₹<span id="btnAmt">—</span>
+        <button class="btn btn-accent btn-block btn-lg" id="continueBtn" onclick="continueToPin()">
+          Continue · ₹<span id="btnAmt">—</span>
         </button>
 
         <button class="btn btn-ghost btn-block btn-sm" onclick="location.href='shipments.html'" style="margin-top:.5rem">
           ← Back to shipments
         </button>
         <div class="pay-footer">No payment details are collected on this screen.</div>
-      </div>
-
-      <!-- Processing -->
-      <div id="processingState" style="display:none;text-align:center;padding:2rem 0">
-        <div class="spinner" style="margin:0 auto 1rem"></div>
-        <div style="font-weight:700;color:var(--primary);font-size:1rem">Updating demo shipment status…</div>
-      </div>
-
-      <!-- Success -->
-      <div id="successState" style="display:none;text-align:center;padding:1.75rem 0">
-        <div style="font-size:4rem;margin-bottom:.75rem">✅</div>
-        <div style="font-weight:800;font-size:1.25rem;color:#2e7d32">Demo payment complete</div>
-        <div class="state-message">
-          ₹<span id="successAmt">—</span> was recorded as paid in the demo app.<br/>
-          <strong>No money was transferred or held.</strong> The traveller can continue the demo shipment flow.
-        </div>
-        <button class="btn btn-primary btn-block" onclick="location.href='shipments.html'">
-          View My Shipments →
-        </button>
       </div>
 
       <!-- Error -->
@@ -121,31 +102,31 @@
   const shipmentId = params.get('shipmentId');
   if (!shipmentId) { window.location.href = 'shipments.html'; }
 
-  window.__orderId    = null;
+  let orderId = null;
 
   // ── Init ──────────────────────────────────────────────────────────────────
   async function init() {
     try {
       const shipment = await api.getShipment(shipmentId);
+      if (shipment.paymentStatus === 'paid') {
+        window.location.replace(`payment-success.html?shipmentId=${encodeURIComponent(shipmentId)}`);
+        return;
+      }
       const amtRs = (shipment.totalAmount / 100).toFixed(2);
 
       document.getElementById('payAmount').textContent = `₹${amtRs}`;
       document.getElementById('payRoute').textContent  = `${shipment.from} → ${shipment.to}`;
       document.getElementById('btnAmt').textContent    = amtRs;
-      document.getElementById('successAmt').textContent = amtRs;
-
       document.getElementById('infoGrid').innerHTML = `
-        <div class="info-item"><span>Parcel</span><strong>${shipment.parcelDescription}</strong></div>
-        <div class="info-item"><span>Weight</span><strong>${shipment.weightKg} kg</strong></div>
-        <div class="info-item"><span>Traveller</span><strong>${shipment.travellerName || '—'}</strong></div>
-        <div class="info-item"><span>Departure</span><strong>${shipment.departureDate || '—'}</strong></div>
+        <div class="info-item"><span>Parcel</span><strong>${escapeHtml(shipment.parcelDescription)}</strong></div>
+        <div class="info-item"><span>Weight</span><strong>${escapeHtml(shipment.weightKg)} kg</strong></div>
+        <div class="info-item"><span>Traveller</span><strong>${escapeHtml(shipment.travellerName || '—')}</strong></div>
+        <div class="info-item"><span>Departure</span><strong>${escapeHtml(shipment.departureDate || '—')}</strong></div>
       `;
-
-      if (shipment.paymentStatus === 'paid') { show('successState'); return; }
 
       // Create mock order
       const order = await api.createOrder(shipmentId);
-      window.__orderId = order.orderId;
+      orderId = order.orderId;
 
       show('paymentUI');
     } catch (err) {
@@ -154,31 +135,22 @@
     }
   }
 
-  // ── Simulate payment ──────────────────────────────────────────────────────
-  window.simulatePay = async function() {
-    const btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    btn.textContent = 'Processing…';
-
-    // Brief artificial delay so it feels like a real payment
-    show('processingState');
-    await sleep(1800);
-
-    try {
-      await api.simulatePay({ orderId: window.__orderId, shipmentId });
-      show('successState');
-    } catch (err) {
-      document.getElementById('errorMsg').textContent = err.message || 'Payment failed. Try again.';
-      show('errorState');
-    }
+  window.continueToPin = function() {
+    if (!orderId) return;
+    sessionStorage.setItem(`demo-payment-order:${shipmentId}`, orderId);
+    window.location.href = `payment-pin.html?shipmentId=${encodeURIComponent(shipmentId)}`;
   };
 
   function show(id) {
-    ['loadingState','paymentUI','processingState','successState','errorState']
+    ['loadingState','paymentUI','errorState']
       .forEach(s => document.getElementById(s).style.display = s === id ? '' : 'none');
   }
 
-  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[character]);
+  }
 
   init();
 </script>

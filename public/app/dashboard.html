@@ -172,6 +172,18 @@
       </a>
     </div>
 
+    <div class="card" style="margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+        <div>
+          <div class="card-title">🔔 New request alerts</div>
+          <div class="text-muted text-sm">In-app alerts update while this dashboard is open. Browser alerts are optional; WhatsApp is not connected.</div>
+        </div>
+        <button class="btn btn-outline btn-sm" id="requestNotificationsButton" type="button" onclick="enableRequestNotifications()">
+          Enable browser alerts
+        </button>
+      </div>
+    </div>
+
     <!-- Recent -->
     <div class="recent-grid">
       <div class="card">
@@ -322,11 +334,20 @@
   document.getElementById('avatarInitial').textContent = (user.fullName || 'U')[0].toUpperCase();
 
   // Show role-specific dashboard
+  let knownPendingRequestIds = new Set();
+  let requestBaselineLoaded = false;
+  let travellerLoadInProgress = false;
+  let requestPollInProgress = false;
+
   if (user.role === 'traveller') {
     document.getElementById('travellerDashboard').style.display = 'block';
     document.getElementById('mainNav').style.background = 'var(--primary)';
     document.getElementById('tWelcome').textContent = `Welcome back, ${user.fullName?.split(' ')[0]}! ✈️`;
     loadTravellerData();
+    window.setInterval(pollIncomingRequests, 25000);
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) pollIncomingRequests();
+    });
   } else {
     document.getElementById('senderDashboard').style.display = 'block';
     document.getElementById('mainNav').style.background = '#1b5e20';
@@ -335,10 +356,15 @@
   }
 
   async function loadTravellerData() {
+    if (travellerLoadInProgress) return;
+    travellerLoadInProgress = true;
     try {
       const [trips, shipments, wallet] = await Promise.all([
         api.getMyTrips(), api.getMyShipments(), api.getWallet()
       ]);
+      const pending = shipments.filter(s => s.status === 'pending');
+      knownPendingRequestIds = new Set(pending.map(s => s.id));
+      requestBaselineLoaded = true;
 
       document.getElementById('tWalletBal').textContent = wallet.walletBalanceFormatted;
       document.getElementById('tStatTrips').textContent = trips.length;
@@ -385,6 +411,63 @@
         `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p><button class="btn btn-sm btn-ghost" onclick="loadTravellerData()">Retry</button></div>`;
       document.getElementById('tRecentShipments').innerHTML =
         `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--danger);font-size:.8rem">${err.message}</p></div>`;
+    } finally {
+      travellerLoadInProgress = false;
+    }
+  }
+
+  async function pollIncomingRequests() {
+    if (!requestBaselineLoaded || requestPollInProgress) return;
+    requestPollInProgress = true;
+    try {
+      const shipments = await api.getMyShipments();
+      const pending = shipments.filter(s => s.status === 'pending');
+      const newRequests = pending.filter(s => !knownPendingRequestIds.has(s.id));
+      knownPendingRequestIds = new Set(pending.map(s => s.id));
+      if (newRequests.length) {
+        newRequests.forEach(notifyNewRequest);
+        await loadTravellerData();
+      }
+    } catch (err) {
+      console.error('Incoming request notification poll failed:', err);
+    } finally {
+      requestPollInProgress = false;
+    }
+  }
+
+  window.enableRequestNotifications = async function() {
+    const button = document.getElementById('requestNotificationsButton');
+    if (!('Notification' in window)) {
+      button.textContent = 'Browser alerts unavailable';
+      showToast('This browser does not support desktop alerts. In-app alerts still work here.', 'info');
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        button.textContent = 'Browser alerts enabled';
+        showToast('Browser alerts enabled for new package requests.', 'success');
+      } else {
+        button.textContent = permission === 'denied' ? 'Alerts blocked in browser settings' : 'Enable browser alerts';
+        showToast('Browser alerts were not enabled. In-app alerts still work while this dashboard is open.', 'info');
+      }
+    } catch (err) {
+      showToast('Could not enable browser alerts. In-app alerts are still available.', 'error');
+    }
+  };
+
+  function notifyNewRequest(shipment) {
+    const message = `New package request: ${shipment.from} → ${shipment.to}`;
+    showToast(message, 'info');
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+      const notification = new Notification('New package delivery request', {
+        body: `${shipment.parcelDescription} · ${shipment.from} → ${shipment.to}`,
+        icon: 'img/favicon/favicon.svg',
+      });
+      notification.onclick = () => {
+        window.focus();
+        window.location.href = 'shipments.html';
+      };
     }
   }
 

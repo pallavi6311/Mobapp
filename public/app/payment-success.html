@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Demo Complete – PEER TO PEER PACKAGE DELIVERY</title>
+  <link rel="icon" href="img/favicon/favicon.svg" type="image/svg+xml"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap"/>
+  <link rel="stylesheet" href="styles/app.css"/>
+  <style>
+    body { background:#f3f6fa; }
+    .success-wrap { min-height:100vh; display:grid; place-items:center; padding:1rem; }
+    .success-card { width:100%; max-width:420px; padding:1.75rem; border:1px solid var(--gray-200); border-radius:22px; background:#fff; box-shadow:0 12px 40px rgba(16,36,58,.12); text-align:center; }
+    .success-icon { display:grid; place-items:center; width:68px; height:68px; margin:0 auto 1rem; border-radius:50%; background:#e6f4ea; color:#237b39; font-size:2rem; }
+    .success-amount { margin:.6rem 0; color:#172b3b; font-size:2rem; font-weight:800; }
+    .demo-badge { width:max-content; max-width:100%; margin:0 auto 1rem; padding:.35rem .7rem; border-radius:999px; background:#fff4d7; color:#825800; font-size:.68rem; font-weight:800; }
+    .success-note { margin:1rem 0 1.25rem; padding:.85rem; border-radius:12px; background:#fff8e8; color:#684b0b; font-size:.8rem; line-height:1.5; }
+    body[data-theme="dark"] .success-card { background:#121d2e; border-color:var(--gray-200); }
+    body[data-theme="dark"] .success-amount { color:var(--gray-900); }
+    body[data-theme="dark"] .demo-badge, body[data-theme="dark"] .success-note { background:#352c18; color:#f3d696; }
+  </style>
+</head>
+<body>
+<main class="success-wrap">
+  <section class="success-card" id="successContent" style="display:none">
+    <div class="success-icon" aria-hidden="true">✓</div>
+    <div class="demo-badge">DEMO STATUS UPDATED</div>
+    <h1 style="font-size:1.3rem">Demo payment complete</h1>
+    <div class="success-amount" id="successAmount">₹—</div>
+    <div class="text-muted" id="successRoute"></div>
+    <div class="success-note"><strong>No real payment happened.</strong><br/>No money was charged, transferred, or held. This only updated the shipment's demo status.</div>
+    <a href="shipments.html" class="btn btn-primary btn-block">View shipment →</a>
+  </section>
+  <section class="success-card" id="loadingState">
+    <div class="spinner" style="margin:0 auto 1rem"></div>
+    <p>Checking demo payment status…</p>
+  </section>
+  <section class="success-card" id="errorState" style="display:none">
+    <h1 style="font-size:1.2rem">Could not load payment status</h1>
+    <p class="text-muted" id="errorMessage" style="margin:1rem 0"></p>
+    <a href="shipments.html" class="btn btn-primary btn-block">Back to shipments</a>
+  </section>
+</main>
+<script type="module">
+  import { api, getUser, getToken } from './js/api.js';
+  const shipmentId = new URLSearchParams(location.search).get('shipmentId');
+  if (!getUser() || !getToken()) location.replace('login.html');
+  else if (!shipmentId) location.replace('shipments.html');
+  else {
+    try {
+      const shipment = await api.getShipment(shipmentId);
+      if (shipment.paymentStatus !== 'paid') location.replace(`payment.html?shipmentId=${encodeURIComponent(shipmentId)}`);
+      else {
+        document.getElementById('successAmount').textContent = `₹${(shipment.totalAmount / 100).toFixed(2)}`;
+        document.getElementById('successRoute').textContent = `${shipment.from} → ${shipment.to}`;
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('successContent').style.display = '';
+      }
+    } catch (err) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorMessage').textContent = err.message || 'Could not verify demo payment status.';
+      document.getElementById('errorState').style.display = '';
+    }
+  }
+</script>
+</body>
+</html>
